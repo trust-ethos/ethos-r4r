@@ -1,82 +1,129 @@
-# Ethos Review Analyzer
+# Ethos Review 4 Review Analyzer
 
-A web application built with Fresh (Deno) to analyze user review patterns and "Review 4 Review" relationships on the Ethos platform.
+A sophisticated web application for analyzing "Review 4 Review" patterns and reputation farming on the Ethos platform. Built with Deno Fresh, TypeScript, and modern web technologies.
 
-## Features
+## 🌟 Features
 
-- **Profile Search**: Search for Ethos users by username or profile URL with real-time typeahead
-- **Review Analysis**: Complete analysis of user review patterns using Ethos API v2
-- **Review Pairing**: Smart pairing of given and received reviews between users
-- **Review 4 Review Detection**: Identify and highlight mutual review relationships with visual indicators
-- **Statistics Dashboard**: Overview of reviews given, received, and reciprocal relationships
-- **Real-time Data**: Live data from Ethos network via official APIs
+### 🔍 **Advanced Search & Analysis**
+- Real-time Ethos profile search with intelligent typeahead
+- Comprehensive review statistics dashboard
+- Analysis of up to 500 reviews per user for thorough insights
 
-## Tech Stack
+### 🔄 **Reciprocal Review Detection**
+- Smart pairing algorithm to identify mutual review relationships
+- Visual indicators for "Review 4 Review" patterns
+- Time gap analysis between reciprocal reviews
 
-- **Framework**: Fresh (Deno's full-stack web framework)
+### 🚨 **Farming Score Algorithm**
+- Sophisticated percentage-based penalty system
+- Risk assessment: Low (0-39%), Moderate (40-69%), High (70-100%)
+- Enhanced detection based on quick reciprocation patterns (<30 minutes)
+
+### 🎨 **Modern Dark UI**
+- Sleek dark mode interface
+- Responsive design with Tailwind CSS
+- Intuitive navigation with clickable user links
+- Shareable profile URLs
+
+### 🔗 **Seamless Navigation**
+- Direct links to Ethos profiles
+- Easy profile-to-profile navigation
+- Bookmarkable analysis URLs
+
+## 🚀 Tech Stack
+
 - **Runtime**: Deno
-- **Styling**: Tailwind CSS
+- **Framework**: Fresh (Deno's full-stack web framework)
 - **Language**: TypeScript
-- **Deployment**: Deno Deploy (ready)
+- **Styling**: Tailwind CSS
+- **State Management**: Preact Signals
+- **APIs**: Ethos Search API (v1) & Activity API (v2)
 
-## Getting Started
+## 🏃‍♂️ Quick Start
 
 ### Prerequisites
+- [Deno](https://deno.land/) installed on your system
 
-- Deno installed on your system
-
-### Installation
+### Development
 
 1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd ethos-timefun-1
-   ```
+```bash
+git clone https://github.com/trust-ethos/ethos-r4r.git
+cd ethos-r4r
+```
 
 2. Start the development server:
-   ```bash
-   deno task start
-   ```
+```bash
+deno task start
+```
 
 3. Open your browser and navigate to `http://localhost:8000`
 
-## Development
+### Production Build
 
-- `deno task start` - Start the development server with hot reload
-- `deno task build` - Build the project for production
-- `deno task preview` - Preview the production build
-- `deno task manifest` - Regenerate the Fresh manifest
-
-## Project Structure
-
-```
-├── routes/           # Page routes
-│   ├── index.tsx     # Homepage with search interface
-│   └── api/          # API endpoints
-│       ├── ethos-search.ts              # Ethos profile search
-│       ├── ethos-activities-given.ts    # Reviews given by user
-│       └── ethos-activities-received.ts # Reviews received by user
-├── islands/          # Interactive components (client-side)
-│   ├── SearchBar.tsx      # Search functionality with typeahead
-│   └── ReviewAnalysis.tsx # Review analysis and pairing
-├── components/       # Reusable components
-│   └── Button.tsx    # Styled button component
-├── static/           # Static assets
-└── fresh.gen.ts      # Generated manifest (auto-updated)
+```bash
+deno task build
+deno task preview
 ```
 
-## Roadmap
+## 📊 How It Works
 
-- [x] Basic search interface
-- [x] Ethos API integration with typeahead search
-- [x] User profile data fetching with avatars and scores
-- [x] Review analysis with Ethos API v2 Activity endpoints
-- [x] "Review 4 Review" pattern detection and pairing
-- [x] Statistics dashboard (given, received, reciprocal reviews)
-- [ ] Review content analysis and sentiment
-- [ ] Relationship graph visualization
-- [ ] Export functionality
+### Review Analysis Process
 
-## Contributing
+1. **Search**: Enter any Ethos username to find profiles
+2. **Fetch**: Retrieves up to 500 reviews (given and received)
+3. **Pair**: Matches reviews between users to identify reciprocal relationships
+4. **Analyze**: Calculates farming score based on timing patterns and reciprocal percentage
+5. **Display**: Shows comprehensive analysis with risk indicators
 
-This project is built with Fresh and follows Deno conventions. Make sure to run `deno task check` before committing changes.
+### Farming Score Calculation
+
+**Base Score**: `(Reciprocal Reviews ÷ Total Received Reviews) × 100`
+
+**Time-Based Penalties**:
+- 80%+ quick reciprocals: +30-50 points (High Risk)
+- 60-79% quick reciprocals: +20-35 points 
+- 40-59% quick reciprocals: +15-25 points
+- 20-39% quick reciprocals: +5-15 points
+- <20% quick reciprocals: No penalty
+
+## 🌐 Deployment
+
+### Deno Deploy
+
+This application is optimized for deployment on [Deno Deploy](https://deno.com/deploy):
+
+1. Connect your GitHub repository to Deno Deploy
+2. Set the entry point to `main.ts`
+3. Deploy from the `deploy` branch
+4. No additional configuration needed!
+
+### Environment Variables
+
+No environment variables are required for basic functionality. The app uses public Ethos APIs.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Ethos](https://ethos.network/) for providing the reputation platform and APIs
+- [Deno](https://deno.land/) team for the excellent runtime and Fresh framework
+- [Tailwind CSS](https://tailwindcss.com/) for the utility-first CSS framework
+
+## 📞 Support
+
+For support, questions, or feature requests, please open an issue on GitHub.
+
+---
+
+**Built with ❤️ for the Ethos community**
