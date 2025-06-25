@@ -97,8 +97,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
     // Calculate R4R Score with improved algorithm
     return received.length > 0 
       ? (() => {
-          // Base reciprocal percentage
-          const baseScore = (reciprocalCount / received.length) * 100;
+          // Base reciprocal percentage (capped at 65% to allow multipliers to reach 100%)
+          const baseScore = Math.min((reciprocalCount / received.length) * 100, 65);
           
           // Count suspicious quick reciprocations (under 30 minutes = 0.0208 days)
           let quickReciprocations = 0;

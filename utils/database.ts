@@ -220,4 +220,22 @@ export async function getLeaderboardStats(): Promise<{
   } finally {
     await freshClient.end();
   }
+}
+
+export async function clearLeaderboard(): Promise<number> {
+  const db = await getClient();
+  
+  // First get the count
+  const countResult = await db.queryObject<{ count: bigint }>`
+    SELECT COUNT(*) as count FROM leaderboard_entries
+  `;
+  
+  const count = Number(countResult.rows[0]?.count || 0);
+  
+  // Then delete all entries
+  await db.queryObject`
+    DELETE FROM leaderboard_entries
+  `;
+  
+  return count;
 } 

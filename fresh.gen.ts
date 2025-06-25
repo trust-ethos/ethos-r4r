@@ -4,6 +4,7 @@
 
 import * as $_404 from "./routes/_404.tsx";
 import * as $_app from "./routes/_app.tsx";
+import * as $api_clear_leaderboard from "./routes/api/clear-leaderboard.ts";
 import * as $api_ethos_activities_given from "./routes/api/ethos-activities-given.ts";
 import * as $api_ethos_activities_received from "./routes/api/ethos-activities-received.ts";
 import * as $api_ethos_search from "./routes/api/ethos-search.ts";
@@ -26,6 +27,7 @@ const manifest = {
   routes: {
     "./routes/_404.tsx": $_404,
     "./routes/_app.tsx": $_app,
+    "./routes/api/clear-leaderboard.ts": $api_clear_leaderboard,
     "./routes/api/ethos-activities-given.ts": $api_ethos_activities_given,
     "./routes/api/ethos-activities-received.ts": $api_ethos_activities_received,
     "./routes/api/ethos-search.ts": $api_ethos_search,
