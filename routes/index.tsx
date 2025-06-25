@@ -9,7 +9,7 @@ export default function Home() {
           {/* Header */}
           <div class="text-center mb-12">
             <h1 class="text-5xl font-bold text-white mb-4">
-              Ethos Review Analyzer
+              Ethos R4R Analyzer
             </h1>
             <p class="text-xl text-gray-300 mb-2">
               Discover review patterns and "Review 4 Review" relationships

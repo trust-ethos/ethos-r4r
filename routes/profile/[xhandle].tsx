@@ -8,11 +8,12 @@ export default function ProfilePage({ params }: PageProps) {
   return (
     <>
       <Head>
-        <title>Ethos Profile Analysis - @{xhandle}</title>
+        <title>@{xhandle} - Ethos R4R Analyzer</title>
         <meta name="description" content={`Review analysis for Ethos user @${xhandle}. View their review patterns, reciprocal relationships, and reputation metrics.`} />
-        <meta property="og:title" content={`Ethos Profile Analysis - @${xhandle}`} />
+        <meta property="og:title" content={`@${xhandle} - Ethos R4R Analyzer`} />
         <meta property="og:description" content={`Review analysis for Ethos user @${xhandle}. View their review patterns, reciprocal relationships, and reputation metrics.`} />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Ethos R4R Analyzer" />
       </Head>
       
       <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">

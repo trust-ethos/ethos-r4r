@@ -5,11 +5,12 @@ export default function Leaderboard() {
   return (
     <>
       <Head>
-        <title>Ethos Review Farming Leaderboard</title>
+        <title>Leaderboard - Ethos R4R Analyzer</title>
         <meta name="description" content="Live rankings of Ethos users by review farming risk scores. See who has the highest reciprocal review patterns." />
-        <meta property="og:title" content="Ethos Review Farming Leaderboard" />
+        <meta property="og:title" content="Leaderboard - Ethos R4R Analyzer" />
         <meta property="og:description" content="Live rankings of Ethos users by review farming risk scores. See who has the highest reciprocal review patterns." />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Ethos R4R Analyzer" />
       </Head>
       
       <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
