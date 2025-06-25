@@ -127,13 +127,13 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           let volumeReason = "Low volume (<10 reciprocals)";
           
           if (reciprocalCount >= 50) {
-            volumeMultiplier = 1.5; // 50% increase for high volume
+            volumeMultiplier = 1.2; // 20% increase for high volume
             volumeReason = "Very high volume (≥50 reciprocals)";
           } else if (reciprocalCount >= 20) {
-            volumeMultiplier = 1.3; // 30% increase for medium volume
+            volumeMultiplier = 1.15; // 15% increase for medium volume
             volumeReason = "High volume (20-49 reciprocals)";
           } else if (reciprocalCount >= 10) {
-            volumeMultiplier = 1.1; // 10% increase for moderate volume
+            volumeMultiplier = 1.05; // 5% increase for moderate volume
             volumeReason = "Moderate volume (10-19 reciprocals)";
           }
           
@@ -153,13 +153,13 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
             reviewsPerDay = totalReviews / Math.max(accountAgeDays, 1);
             
             if (reviewsPerDay > 10 && accountAgeDays < 30) {
-              accountAgeMultiplier = 2.0; // Major red flag: >10 reviews/day on new account
+              accountAgeMultiplier = 1.4; // Reduced from 2.0: Major red flag: >10 reviews/day on new account
               accountAgeReason = `Very high activity: ${reviewsPerDay.toFixed(1)} reviews/day on ${accountAgeDays.toFixed(0)}-day account`;
             } else if (reviewsPerDay > 5 && accountAgeDays < 60) {
-              accountAgeMultiplier = 1.5; // High activity on relatively new account
+              accountAgeMultiplier = 1.25; // Reduced from 1.5: High activity on relatively new account
               accountAgeReason = `High activity: ${reviewsPerDay.toFixed(1)} reviews/day on ${accountAgeDays.toFixed(0)}-day account`;
             } else if (reviewsPerDay > 2 && accountAgeDays < 90) {
-              accountAgeMultiplier = 1.2; // Moderate activity on new account
+              accountAgeMultiplier = 1.1; // Reduced from 1.2: Moderate activity on new account
               accountAgeReason = `Moderate activity: ${reviewsPerDay.toFixed(1)} reviews/day on ${accountAgeDays.toFixed(0)}-day account`;
             }
           }
@@ -172,20 +172,20 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           let timePenaltyReason = "No time penalty";
           
           if (suspiciousRatio >= 0.8 && quickReciprocations >= 3) {
-            // 80%+ of reciprocals are quick: major red flag, add 20-30 points
-            timePenalty = 20 + (suspiciousRatio * 10);
+            // 80%+ of reciprocals are quick: major red flag, add 10-15 points (reduced from 20-30)
+            timePenalty = 10 + (suspiciousRatio * 5);
             timePenaltyReason = `Major penalty: ${(suspiciousRatio * 100).toFixed(0)}% quick reciprocals (≥80%)`;
           } else if (suspiciousRatio >= 0.6 && quickReciprocations >= 3) {
-            // 60-79% of reciprocals are quick: high penalty, add 15-25 points
-            timePenalty = 15 + (suspiciousRatio * 10);
+            // 60-79% of reciprocals are quick: high penalty, add 8-12 points (reduced from 15-25)
+            timePenalty = 8 + (suspiciousRatio * 4);
             timePenaltyReason = `High penalty: ${(suspiciousRatio * 100).toFixed(0)}% quick reciprocals (60-79%)`;
           } else if (suspiciousRatio >= 0.4 && quickReciprocations >= 2) {
-            // 40-59% of reciprocals are quick: moderate penalty, add 10-20 points
-            timePenalty = 10 + (suspiciousRatio * 10);
+            // 40-59% of reciprocals are quick: moderate penalty, add 5-8 points (reduced from 10-20)
+            timePenalty = 5 + (suspiciousRatio * 3);
             timePenaltyReason = `Moderate penalty: ${(suspiciousRatio * 100).toFixed(0)}% quick reciprocals (40-59%)`;
           } else if (suspiciousRatio >= 0.2 && quickReciprocations >= 2) {
-            // 20-39% of reciprocals are quick: small penalty, add 5-10 points
-            timePenalty = 5 + (suspiciousRatio * 5);
+            // 20-39% of reciprocals are quick: small penalty, add 2-4 points (reduced from 5-10)
+            timePenalty = 2 + (suspiciousRatio * 2);
             timePenaltyReason = `Small penalty: ${(suspiciousRatio * 100).toFixed(0)}% quick reciprocals (20-39%)`;
           }
           
@@ -224,13 +224,13 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           finalScore: 0
         };
 
-    const reviewFarmingScore = farmingScoreDetails.finalScore;
+    const reviewR4RScore = farmingScoreDetails.finalScore;
 
     return {
       given: given.length,
       received: received.length,
       reciprocal: reciprocalCount,
-      farmingScore: reviewFarmingScore
+      r4rScore: reviewR4RScore
     };
   });
 
@@ -339,7 +339,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         reviewsGiven: stats.value.given,
         reviewsReceived: stats.value.received,
         reciprocalReviews: stats.value.reciprocal,
-        farmingScore: stats.value.farmingScore,
+        farmingScore: stats.value.r4rScore,
         quickReciprocations,
         avgReciprocalTime,
         processingTime: 0 // We can add timing later if needed
@@ -561,34 +561,34 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           <div class="text-sm text-purple-400">Reciprocal Reviews</div>
         </div>
         <div class={`rounded-lg p-4 text-center ${
-          stats.value.farmingScore >= 70 
+          stats.value.r4rScore >= 70 
             ? 'bg-red-900/30 border border-red-500/50' 
-            : stats.value.farmingScore >= 40 
+            : stats.value.r4rScore >= 40 
               ? 'bg-yellow-900/30 border border-yellow-500/50'
               : 'bg-emerald-900/30 border border-emerald-500/50'
         }`}>
           <div class={`text-2xl font-bold ${
-            stats.value.farmingScore >= 70 
+            stats.value.r4rScore >= 70 
               ? 'text-red-400' 
-              : stats.value.farmingScore >= 40 
+              : stats.value.r4rScore >= 40 
                 ? 'text-yellow-400'
                 : 'text-emerald-400'
           }`}>
-            {stats.value.farmingScore}%
+            {stats.value.r4rScore}%
           </div>
           <div class={`text-sm ${
-            stats.value.farmingScore >= 70 
+            stats.value.r4rScore >= 70 
               ? 'text-red-400' 
-              : stats.value.farmingScore >= 40 
+              : stats.value.r4rScore >= 40 
                 ? 'text-yellow-400'
                 : 'text-emerald-400'
           }`}>
-            Farming Score
+            R4R Score
           </div>
           <div class="text-xs text-gray-400 mt-1">
-            {stats.value.farmingScore >= 70 
+            {stats.value.r4rScore >= 70 
               ? 'High Risk' 
-              : stats.value.farmingScore >= 40 
+              : stats.value.r4rScore >= 40 
                 ? 'Moderate Risk'
                 : 'Low Risk'
             }
@@ -607,7 +607,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         </div>
       </div>
 
-      {/* Farming Score Disclaimer */}
+      {/* R4R Score Disclaimer */}
       <div class="bg-gray-900/50 border border-gray-600 rounded-lg p-4 mb-8">
         <div class="flex items-start gap-3">
           <div class="flex-shrink-0 mt-1">
@@ -616,19 +616,19 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
             </svg>
           </div>
           <div class="flex-1">
-            <h4 class="text-sm font-medium text-yellow-400 mb-2">How the Farming Score is Calculated</h4>
+            <h4 class="text-sm font-medium text-yellow-400 mb-2">How the R4R Score is Calculated</h4>
             <div class="text-xs text-gray-300 space-y-2">
               <p>
                 <strong>Base Score:</strong> Percentage of received reviews that are reciprocal (you reviewed them back)
               </p>
               <p>
-                <strong>Volume Multiplier:</strong> Higher review volumes get larger multipliers (1.1x-1.5x) as mass reciprocal activity is more suspicious
+                <strong>Volume Multiplier:</strong> Higher review volumes get larger multipliers (1.05x-1.2x) as mass reciprocal activity is more suspicious
               </p>
               <p>
-                <strong>Account Age Factor:</strong> New accounts with high activity rates get additional multipliers (1.2x-2.0x)
+                <strong>Account Age Factor:</strong> New accounts with high activity rates get additional multipliers (1.1x-1.4x)
               </p>
               <p>
-                <strong>Time Penalties:</strong> Quick reciprocations (under 30 minutes) add 5-30 points based on frequency
+                <strong>Time Penalties:</strong> Quick reciprocations (under 30 minutes) add 2-15 points based on frequency
               </p>
               <p>
                 <strong>Risk Levels:</strong> High (≥70%), Moderate (40-69%), Low (&lt;40%)
@@ -643,7 +643,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         </div>
       </div>
 
-      {/* Farming Score Debug Breakdown */}
+      {/* R4R Score Debug Breakdown */}
       <div class="bg-gray-800/50 border border-gray-600 rounded-lg p-4 mb-8">
         <h4 class="text-sm font-medium text-blue-400 mb-4 flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
