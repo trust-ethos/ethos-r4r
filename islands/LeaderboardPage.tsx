@@ -134,7 +134,7 @@ export default function LeaderboardPage() {
       <div class="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4 mb-6">
         <p class="text-blue-300 text-sm">
           📊 This leaderboard shows users analyzed through profile searches. 
-          Higher farming scores indicate more suspicious review patterns.
+                        Higher R4R scores indicate more suspicious review patterns.
           {stats.value?.lastUpdated && (
             <span class="block mt-1">
               Last updated: {formatDate(stats.value.lastUpdated)}
@@ -173,7 +173,7 @@ export default function LeaderboardPage() {
                     User
                   </th>
                   <th class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Farming Score
+                                          R4R Score
                   </th>
                   <th class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Risk Level

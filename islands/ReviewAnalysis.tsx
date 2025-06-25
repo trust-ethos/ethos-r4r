@@ -94,8 +94,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
       .filter(user => user.hasGiven && user.hasReceived)
       .length;
 
-    // Calculate Review Farming Score with improved algorithm
-    const farmingScoreDetails = received.length > 0 
+    // Calculate R4R Score with improved algorithm
+    const r4rScoreDetails = received.length > 0 
       ? (() => {
           // Base reciprocal percentage
           const baseScore = (reciprocalCount / received.length) * 100;
@@ -224,7 +224,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           finalScore: 0
         };
 
-    const reviewR4RScore = farmingScoreDetails.finalScore;
+    const reviewR4RScore = r4rScoreDetails.finalScore;
 
     return {
       given: given.length,
@@ -656,7 +656,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           {/* Base Score */}
           <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3">
             <div class="text-xs text-blue-300 font-medium mb-1">Base Score</div>
-            <div class="text-lg font-bold text-blue-400">{farmingScoreDetails.baseScore.toFixed(1)}%</div>
+            <div class="text-lg font-bold text-blue-400">{r4rScoreDetails.baseScore.toFixed(1)}%</div>
             <div class="text-xs text-gray-400 mt-1">
               {stats.value.reciprocal} of {stats.value.received} reviews reciprocal
             </div>
@@ -665,27 +665,27 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           {/* Volume Multiplier */}
           <div class="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3">
             <div class="text-xs text-purple-300 font-medium mb-1">Volume Multiplier</div>
-            <div class="text-lg font-bold text-purple-400">{farmingScoreDetails.volumeMultiplier.toFixed(1)}x</div>
+            <div class="text-lg font-bold text-purple-400">{r4rScoreDetails.volumeMultiplier.toFixed(1)}x</div>
             <div class="text-xs text-gray-400 mt-1">
-              {farmingScoreDetails.volumeReason}
+              {r4rScoreDetails.volumeReason}
             </div>
           </div>
 
           {/* Account Age Factor */}
           <div class="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3">
             <div class="text-xs text-orange-300 font-medium mb-1">Account Age Factor</div>
-            <div class="text-lg font-bold text-orange-400">{farmingScoreDetails.accountAgeMultiplier.toFixed(1)}x</div>
+            <div class="text-lg font-bold text-orange-400">{r4rScoreDetails.accountAgeMultiplier.toFixed(1)}x</div>
             <div class="text-xs text-gray-400 mt-1">
-              {farmingScoreDetails.accountAgeReason}
+              {r4rScoreDetails.accountAgeReason}
             </div>
           </div>
 
           {/* Time Penalty */}
           <div class="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
             <div class="text-xs text-red-300 font-medium mb-1">Time Penalty</div>
-            <div class="text-lg font-bold text-red-400">+{farmingScoreDetails.timePenalty.toFixed(1)}</div>
+            <div class="text-lg font-bold text-red-400">+{r4rScoreDetails.timePenalty.toFixed(1)}</div>
             <div class="text-xs text-gray-400 mt-1">
-              {farmingScoreDetails.timePenaltyReason}
+              {r4rScoreDetails.timePenaltyReason}
             </div>
           </div>
         </div>
@@ -695,20 +695,20 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           <div class="text-xs text-gray-300 font-medium mb-2">Calculation Flow:</div>
           <div class="text-xs text-gray-400 space-y-1">
             <div>
-              <span class="text-blue-400">{farmingScoreDetails.baseScore.toFixed(1)}%</span> (base) × 
-              <span class="text-purple-400"> {farmingScoreDetails.volumeMultiplier.toFixed(1)}</span> (volume) × 
-              <span class="text-orange-400"> {farmingScoreDetails.accountAgeMultiplier.toFixed(1)}</span> (age) = 
-              <span class="text-yellow-400"> {farmingScoreDetails.scoreAfterMultipliers.toFixed(1)}%</span>
+              <span class="text-blue-400">{r4rScoreDetails.baseScore.toFixed(1)}%</span> (base) × 
+              <span class="text-purple-400"> {r4rScoreDetails.volumeMultiplier.toFixed(1)}</span> (volume) × 
+              <span class="text-orange-400"> {r4rScoreDetails.accountAgeMultiplier.toFixed(1)}</span> (age) = 
+              <span class="text-yellow-400"> {r4rScoreDetails.scoreAfterMultipliers.toFixed(1)}%</span>
             </div>
             <div>
-              <span class="text-yellow-400">{farmingScoreDetails.scoreAfterMultipliers.toFixed(1)}%</span> + 
-              <span class="text-red-400"> {farmingScoreDetails.timePenalty.toFixed(1)}</span> (time penalty) = 
-              <span class="text-white font-medium"> {farmingScoreDetails.finalScore}%</span> (final, capped at 100%)
+              <span class="text-yellow-400">{r4rScoreDetails.scoreAfterMultipliers.toFixed(1)}%</span> + 
+              <span class="text-red-400"> {r4rScoreDetails.timePenalty.toFixed(1)}</span> (time penalty) = 
+              <span class="text-white font-medium"> {r4rScoreDetails.finalScore}%</span> (final, capped at 100%)
             </div>
-            {farmingScoreDetails.quickReciprocations > 0 && (
+            {r4rScoreDetails.quickReciprocations > 0 && (
               <div class="mt-2 pt-2 border-t border-gray-600">
-                <span class="text-red-300">Quick reciprocations:</span> {farmingScoreDetails.quickReciprocations} of {stats.value.reciprocal} 
-                ({(farmingScoreDetails.suspiciousRatio * 100).toFixed(1)}% within 30 minutes)
+                <span class="text-red-300">Quick reciprocations:</span> {r4rScoreDetails.quickReciprocations} of {stats.value.reciprocal} 
+                ({(r4rScoreDetails.suspiciousRatio * 100).toFixed(1)}% within 30 minutes)
               </div>
             )}
           </div>

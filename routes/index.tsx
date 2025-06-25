@@ -24,10 +24,10 @@ export default function Home() {
                 href="/leaderboard" 
                 class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
               >
-                🏆 View Farming Leaderboard
+                🏆 View R4R Leaderboard
               </a>
               <p class="text-sm text-gray-400 mt-2">
-                See live rankings of review farming risk scores
+                See live rankings of R4R risk scores
               </p>
             </div>
           </div>

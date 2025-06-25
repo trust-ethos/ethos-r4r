@@ -6,9 +6,9 @@ export default function Leaderboard() {
     <>
       <Head>
         <title>Leaderboard - Ethos R4R Analyzer</title>
-        <meta name="description" content="Live rankings of Ethos users by review farming risk scores. See who has the highest reciprocal review patterns." />
+        <meta name="description" content="Live rankings of Ethos users by R4R risk scores. See who has the highest reciprocal review patterns." />
         <meta property="og:title" content="Leaderboard - Ethos R4R Analyzer" />
-        <meta property="og:description" content="Live rankings of Ethos users by review farming risk scores. See who has the highest reciprocal review patterns." />
+        <meta property="og:description" content="Live rankings of Ethos users by R4R risk scores. See who has the highest reciprocal review patterns." />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Ethos R4R Analyzer" />
       </Head>
@@ -19,10 +19,10 @@ export default function Leaderboard() {
             {/* Header */}
             <div class="text-center mb-8">
               <h1 class="text-4xl font-bold text-white mb-2">
-                🏆 Review Farming Leaderboard
+                🏆 R4R Leaderboard
               </h1>
               <p class="text-lg text-gray-300 mb-4">
-                Live rankings of Ethos users by review farming risk scores
+                Live rankings of Ethos users by R4R risk scores
               </p>
               <a 
                 href="/" 
