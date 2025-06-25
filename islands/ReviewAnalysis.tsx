@@ -94,14 +94,13 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
       .filter(user => user.hasGiven && user.hasReceived)
       .length;
 
-    // Calculate Review Farming Score with time gap analysis
+    // Calculate Review Farming Score with improved algorithm
     const reviewFarmingScore = received.length > 0 
       ? (() => {
           // Base reciprocal percentage
           const baseScore = (reciprocalCount / received.length) * 100;
           
           // Count suspicious quick reciprocations (under 30 minutes = 0.0208 days)
-          // We need to calculate this from the actual review data
           let quickReciprocations = 0;
           
           given.forEach(givenReview => {
@@ -122,38 +121,74 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           // Calculate suspicious ratio
           const suspiciousRatio = reciprocalCount > 0 ? quickReciprocations / reciprocalCount : 0;
           
-          // Apply penalty based on suspicious patterns
-          let adjustedScore = baseScore;
+          // NEW: Volume-based scoring - higher volume of reciprocals is more suspicious
+          const totalReviews = given.length + received.length;
+          let volumeMultiplier = 1;
+          
+          if (reciprocalCount >= 50) {
+            volumeMultiplier = 1.5; // 50% increase for high volume
+          } else if (reciprocalCount >= 20) {
+            volumeMultiplier = 1.3; // 30% increase for medium volume
+          } else if (reciprocalCount >= 10) {
+            volumeMultiplier = 1.1; // 10% increase for moderate volume
+          }
+          // Low volume (< 10 reciprocals) gets no multiplier - could be normal behavior
+          
+          // NEW: Account for user's time on platform (estimate based on earliest review)
+          let accountAgeMultiplier = 1;
+          const allReviews = [...given, ...received];
+          if (allReviews.length > 0) {
+            const timestamps = allReviews.map(r => parseTimestamp(r.timestamp).getTime());
+            const earliestReview = Math.min(...timestamps);
+            const accountAgeDays = (Date.now() - earliestReview) / (1000 * 60 * 60 * 24);
+            
+            // High activity in short time is suspicious
+            const reviewsPerDay = totalReviews / Math.max(accountAgeDays, 1);
+            
+            if (reviewsPerDay > 10 && accountAgeDays < 30) {
+              accountAgeMultiplier = 2.0; // Major red flag: >10 reviews/day on new account
+            } else if (reviewsPerDay > 5 && accountAgeDays < 60) {
+              accountAgeMultiplier = 1.5; // High activity on relatively new account
+            } else if (reviewsPerDay > 2 && accountAgeDays < 90) {
+              accountAgeMultiplier = 1.2; // Moderate activity on new account
+            }
+          }
+          
+          // Apply all multipliers to base score
+          let adjustedScore = baseScore * volumeMultiplier * accountAgeMultiplier;
           
           console.log("Farming Score Calculation:");
           console.log("Base score:", baseScore.toFixed(1) + "%");
+          console.log("Reciprocal count:", reciprocalCount);
+          console.log("Volume multiplier:", volumeMultiplier + "x");
+          console.log("Account age multiplier:", accountAgeMultiplier + "x");
+          console.log("Score after multipliers:", adjustedScore.toFixed(1) + "%");
           console.log("Quick reciprocations:", quickReciprocations);
-          console.log("Total reciprocations:", reciprocalCount);
           console.log("Quick reciprocation rate:", (suspiciousRatio * 100).toFixed(1) + "%");
           
-          // Apply penalties based on percentage of reciprocals that are quick
-          if (suspiciousRatio >= 0.8 && quickReciprocations >= 2) {
-            // 80%+ of reciprocals are quick: major red flag, add 30-50 points
-            const penalty = 30 + (suspiciousRatio * 20);
+          // Apply time-based penalties (now on top of multiplied score)
+          if (suspiciousRatio >= 0.8 && quickReciprocations >= 3) {
+            // 80%+ of reciprocals are quick: major red flag, add 20-30 points
+            const penalty = 20 + (suspiciousRatio * 10);
             adjustedScore += penalty;
             console.log("Major penalty applied (80%+ quick):", penalty.toFixed(1) + " points");
-          } else if (suspiciousRatio >= 0.6 && quickReciprocations >= 2) {
-            // 60-79% of reciprocals are quick: high penalty, add 20-35 points
-            const penalty = 20 + (suspiciousRatio * 15);
+          } else if (suspiciousRatio >= 0.6 && quickReciprocations >= 3) {
+            // 60-79% of reciprocals are quick: high penalty, add 15-25 points
+            const penalty = 15 + (suspiciousRatio * 10);
             adjustedScore += penalty;
             console.log("High penalty applied (60-79% quick):", penalty.toFixed(1) + " points");
           } else if (suspiciousRatio >= 0.4 && quickReciprocations >= 2) {
-            // 40-59% of reciprocals are quick: moderate penalty, add 15-25 points
-            const penalty = 15 + (suspiciousRatio * 10);
+            // 40-59% of reciprocals are quick: moderate penalty, add 10-20 points
+            const penalty = 10 + (suspiciousRatio * 10);
             adjustedScore += penalty;
             console.log("Moderate penalty applied (40-59% quick):", penalty.toFixed(1) + " points");
           } else if (suspiciousRatio >= 0.2 && quickReciprocations >= 2) {
-            // 20-39% of reciprocals are quick: small penalty, add 5-15 points
-            const penalty = 5 + (suspiciousRatio * 10);
+            // 20-39% of reciprocals are quick: small penalty, add 5-10 points
+            const penalty = 5 + (suspiciousRatio * 5);
             adjustedScore += penalty;
             console.log("Small penalty applied (20-39% quick):", penalty.toFixed(1) + " points");
           } else {
-            console.log("No penalty applied (<20% quick or <2 total quick reciprocations)");
+            console.log("No time penalty applied");
           }
           
           console.log("Final adjusted score:", Math.min(Math.round(adjustedScore), 100) + "%");
@@ -254,6 +289,51 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
     });
   });
 
+  // Save analysis results to database
+  const saveAnalysisToDatabase = async () => {
+    try {
+      // Calculate quick reciprocations and average time
+      const reciprocalPairs = reviewPairs.value.filter(pair => pair.isReciprocal);
+      const quickReciprocations = reciprocalPairs.filter(pair => 
+        pair.timeDifference !== undefined && pair.timeDifference < 0.0208 // Under 30 minutes
+      ).length;
+      
+      const avgReciprocalTime = reciprocalPairs.length > 0 
+        ? reciprocalPairs.reduce((sum, pair) => sum + (pair.timeDifference || 0), 0) / reciprocalPairs.length
+        : 0;
+
+      const analysisData = {
+        userkey: selectedUser.userkey,
+        username: selectedUser.username,
+        name: selectedUser.name,
+        avatar: selectedUser.avatar,
+        score: selectedUser.score,
+        reviewsGiven: stats.value.given,
+        reviewsReceived: stats.value.received,
+        reciprocalReviews: stats.value.reciprocal,
+        farmingScore: stats.value.farmingScore,
+        quickReciprocations,
+        avgReciprocalTime,
+        processingTime: 0 // We can add timing later if needed
+      };
+
+      const response = await fetch('/api/save-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(analysisData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Analysis saved to leaderboard:', result);
+      } else {
+        console.warn('⚠️ Failed to save analysis to database');
+      }
+    } catch (error) {
+      console.error('❌ Error saving analysis:', error);
+    }
+  };
+
   // Fetch review data
   useEffect(() => {
     const fetchReviews = async () => {
@@ -284,6 +364,12 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
 
         givenReviews.value = givenData.values || [];
         receivedReviews.value = receivedData.values || [];
+
+        // Save analysis to database after data is loaded
+        // We need to wait a bit for the computed values to update
+        setTimeout(() => {
+          saveAnalysisToDatabase();
+        }, 100);
 
       } catch (err) {
         console.error("Error fetching reviews:", err);
@@ -490,6 +576,42 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
               </div>
             ) : null;
           })()}
+        </div>
+      </div>
+
+      {/* Farming Score Disclaimer */}
+      <div class="bg-gray-900/50 border border-gray-600 rounded-lg p-4 mb-8">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 mt-1">
+            <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-sm font-medium text-yellow-400 mb-2">How the Farming Score is Calculated</h4>
+            <div class="text-xs text-gray-300 space-y-2">
+              <p>
+                <strong>Base Score:</strong> Percentage of received reviews that are reciprocal (you reviewed them back)
+              </p>
+              <p>
+                <strong>Volume Multiplier:</strong> Higher review volumes get larger multipliers (1.1x-1.5x) as mass reciprocal activity is more suspicious
+              </p>
+              <p>
+                <strong>Account Age Factor:</strong> New accounts with high activity rates get additional multipliers (1.2x-2.0x)
+              </p>
+              <p>
+                <strong>Time Penalties:</strong> Quick reciprocations (under 30 minutes) add 5-30 points based on frequency
+              </p>
+              <p>
+                <strong>Risk Levels:</strong> High (≥70%), Moderate (40-69%), Low (&lt;40%)
+              </p>
+            </div>
+            <div class="mt-3 pt-3 border-t border-gray-700">
+              <p class="text-xs text-gray-400 italic">
+                ⚠️ <strong>This is not an official score, just an experimental analysis tool.</strong> Results should be interpreted carefully and may contain false positives.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

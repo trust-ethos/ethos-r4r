@@ -8,11 +8,15 @@ import * as $api_ethos_activities_given from "./routes/api/ethos-activities-give
 import * as $api_ethos_activities_received from "./routes/api/ethos-activities-received.ts";
 import * as $api_ethos_search from "./routes/api/ethos-search.ts";
 import * as $api_joke from "./routes/api/joke.ts";
+import * as $api_leaderboard from "./routes/api/leaderboard.ts";
+import * as $api_save_analysis from "./routes/api/save-analysis.ts";
 import * as $greet_name_ from "./routes/greet/[name].tsx";
 import * as $index from "./routes/index.tsx";
+import * as $leaderboard from "./routes/leaderboard.tsx";
 import * as $profile_xhandle_ from "./routes/profile/[xhandle].tsx";
 import * as $AppWrapper from "./islands/AppWrapper.tsx";
 import * as $Counter from "./islands/Counter.tsx";
+import * as $LeaderboardPage from "./islands/LeaderboardPage.tsx";
 import * as $ProfileAnalysisPage from "./islands/ProfileAnalysisPage.tsx";
 import * as $ReviewAnalysis from "./islands/ReviewAnalysis.tsx";
 import * as $SearchBar from "./islands/SearchBar.tsx";
@@ -26,13 +30,17 @@ const manifest = {
     "./routes/api/ethos-activities-received.ts": $api_ethos_activities_received,
     "./routes/api/ethos-search.ts": $api_ethos_search,
     "./routes/api/joke.ts": $api_joke,
+    "./routes/api/leaderboard.ts": $api_leaderboard,
+    "./routes/api/save-analysis.ts": $api_save_analysis,
     "./routes/greet/[name].tsx": $greet_name_,
     "./routes/index.tsx": $index,
+    "./routes/leaderboard.tsx": $leaderboard,
     "./routes/profile/[xhandle].tsx": $profile_xhandle_,
   },
   islands: {
     "./islands/AppWrapper.tsx": $AppWrapper,
     "./islands/Counter.tsx": $Counter,
+    "./islands/LeaderboardPage.tsx": $LeaderboardPage,
     "./islands/ProfileAnalysisPage.tsx": $ProfileAnalysisPage,
     "./islands/ReviewAnalysis.tsx": $ReviewAnalysis,
     "./islands/SearchBar.tsx": $SearchBar,
