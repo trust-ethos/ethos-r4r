@@ -95,7 +95,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
       .length;
 
     // Calculate Review Farming Score with improved algorithm
-    const reviewFarmingScore = received.length > 0 
+    const farmingScoreDetails = received.length > 0 
       ? (() => {
           // Base reciprocal percentage
           const baseScore = (reciprocalCount / received.length) * 100;
@@ -124,79 +124,107 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           // NEW: Volume-based scoring - higher volume of reciprocals is more suspicious
           const totalReviews = given.length + received.length;
           let volumeMultiplier = 1;
+          let volumeReason = "Low volume (<10 reciprocals)";
           
           if (reciprocalCount >= 50) {
             volumeMultiplier = 1.5; // 50% increase for high volume
+            volumeReason = "Very high volume (≥50 reciprocals)";
           } else if (reciprocalCount >= 20) {
             volumeMultiplier = 1.3; // 30% increase for medium volume
+            volumeReason = "High volume (20-49 reciprocals)";
           } else if (reciprocalCount >= 10) {
             volumeMultiplier = 1.1; // 10% increase for moderate volume
+            volumeReason = "Moderate volume (10-19 reciprocals)";
           }
-          // Low volume (< 10 reciprocals) gets no multiplier - could be normal behavior
           
           // NEW: Account for user's time on platform (estimate based on earliest review)
           let accountAgeMultiplier = 1;
+          let accountAgeReason = "Normal activity rate";
+          let accountAgeDays = 0;
+          let reviewsPerDay = 0;
+          
           const allReviews = [...given, ...received];
           if (allReviews.length > 0) {
             const timestamps = allReviews.map(r => parseTimestamp(r.timestamp).getTime());
             const earliestReview = Math.min(...timestamps);
-            const accountAgeDays = (Date.now() - earliestReview) / (1000 * 60 * 60 * 24);
+            accountAgeDays = (Date.now() - earliestReview) / (1000 * 60 * 60 * 24);
             
             // High activity in short time is suspicious
-            const reviewsPerDay = totalReviews / Math.max(accountAgeDays, 1);
+            reviewsPerDay = totalReviews / Math.max(accountAgeDays, 1);
             
             if (reviewsPerDay > 10 && accountAgeDays < 30) {
               accountAgeMultiplier = 2.0; // Major red flag: >10 reviews/day on new account
+              accountAgeReason = `Very high activity: ${reviewsPerDay.toFixed(1)} reviews/day on ${accountAgeDays.toFixed(0)}-day account`;
             } else if (reviewsPerDay > 5 && accountAgeDays < 60) {
               accountAgeMultiplier = 1.5; // High activity on relatively new account
+              accountAgeReason = `High activity: ${reviewsPerDay.toFixed(1)} reviews/day on ${accountAgeDays.toFixed(0)}-day account`;
             } else if (reviewsPerDay > 2 && accountAgeDays < 90) {
               accountAgeMultiplier = 1.2; // Moderate activity on new account
+              accountAgeReason = `Moderate activity: ${reviewsPerDay.toFixed(1)} reviews/day on ${accountAgeDays.toFixed(0)}-day account`;
             }
           }
           
           // Apply all multipliers to base score
           let adjustedScore = baseScore * volumeMultiplier * accountAgeMultiplier;
           
-          console.log("Farming Score Calculation:");
-          console.log("Base score:", baseScore.toFixed(1) + "%");
-          console.log("Reciprocal count:", reciprocalCount);
-          console.log("Volume multiplier:", volumeMultiplier + "x");
-          console.log("Account age multiplier:", accountAgeMultiplier + "x");
-          console.log("Score after multipliers:", adjustedScore.toFixed(1) + "%");
-          console.log("Quick reciprocations:", quickReciprocations);
-          console.log("Quick reciprocation rate:", (suspiciousRatio * 100).toFixed(1) + "%");
-          
           // Apply time-based penalties (now on top of multiplied score)
+          let timePenalty = 0;
+          let timePenaltyReason = "No time penalty";
+          
           if (suspiciousRatio >= 0.8 && quickReciprocations >= 3) {
             // 80%+ of reciprocals are quick: major red flag, add 20-30 points
-            const penalty = 20 + (suspiciousRatio * 10);
-            adjustedScore += penalty;
-            console.log("Major penalty applied (80%+ quick):", penalty.toFixed(1) + " points");
+            timePenalty = 20 + (suspiciousRatio * 10);
+            timePenaltyReason = `Major penalty: ${(suspiciousRatio * 100).toFixed(0)}% quick reciprocals (≥80%)`;
           } else if (suspiciousRatio >= 0.6 && quickReciprocations >= 3) {
             // 60-79% of reciprocals are quick: high penalty, add 15-25 points
-            const penalty = 15 + (suspiciousRatio * 10);
-            adjustedScore += penalty;
-            console.log("High penalty applied (60-79% quick):", penalty.toFixed(1) + " points");
+            timePenalty = 15 + (suspiciousRatio * 10);
+            timePenaltyReason = `High penalty: ${(suspiciousRatio * 100).toFixed(0)}% quick reciprocals (60-79%)`;
           } else if (suspiciousRatio >= 0.4 && quickReciprocations >= 2) {
             // 40-59% of reciprocals are quick: moderate penalty, add 10-20 points
-            const penalty = 10 + (suspiciousRatio * 10);
-            adjustedScore += penalty;
-            console.log("Moderate penalty applied (40-59% quick):", penalty.toFixed(1) + " points");
+            timePenalty = 10 + (suspiciousRatio * 10);
+            timePenaltyReason = `Moderate penalty: ${(suspiciousRatio * 100).toFixed(0)}% quick reciprocals (40-59%)`;
           } else if (suspiciousRatio >= 0.2 && quickReciprocations >= 2) {
             // 20-39% of reciprocals are quick: small penalty, add 5-10 points
-            const penalty = 5 + (suspiciousRatio * 5);
-            adjustedScore += penalty;
-            console.log("Small penalty applied (20-39% quick):", penalty.toFixed(1) + " points");
-          } else {
-            console.log("No time penalty applied");
+            timePenalty = 5 + (suspiciousRatio * 5);
+            timePenaltyReason = `Small penalty: ${(suspiciousRatio * 100).toFixed(0)}% quick reciprocals (20-39%)`;
           }
           
-          console.log("Final adjusted score:", Math.min(Math.round(adjustedScore), 100) + "%");
+          adjustedScore += timePenalty;
+          const finalScore = Math.min(Math.round(adjustedScore), 100);
           
-          // Cap at 100%
-          return Math.min(Math.round(adjustedScore), 100);
+          return {
+            baseScore: baseScore,
+            volumeMultiplier: volumeMultiplier,
+            volumeReason: volumeReason,
+            accountAgeMultiplier: accountAgeMultiplier,
+            accountAgeReason: accountAgeReason,
+            accountAgeDays: accountAgeDays,
+            reviewsPerDay: reviewsPerDay,
+            scoreAfterMultipliers: adjustedScore - timePenalty,
+            timePenalty: timePenalty,
+            timePenaltyReason: timePenaltyReason,
+            quickReciprocations: quickReciprocations,
+            suspiciousRatio: suspiciousRatio,
+            finalScore: finalScore
+          };
         })()
-      : 0;
+      : {
+          baseScore: 0,
+          volumeMultiplier: 1,
+          volumeReason: "No reviews received",
+          accountAgeMultiplier: 1,
+          accountAgeReason: "No reviews to analyze",
+          accountAgeDays: 0,
+          reviewsPerDay: 0,
+          scoreAfterMultipliers: 0,
+          timePenalty: 0,
+          timePenaltyReason: "No time penalty",
+          quickReciprocations: 0,
+          suspiciousRatio: 0,
+          finalScore: 0
+        };
+
+    const reviewFarmingScore = farmingScoreDetails.finalScore;
 
     return {
       given: given.length,
@@ -611,6 +639,78 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
                 ⚠️ <strong>This is not an official score, just an experimental analysis tool.</strong> Results should be interpreted carefully and may contain false positives.
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Farming Score Debug Breakdown */}
+      <div class="bg-gray-800/50 border border-gray-600 rounded-lg p-4 mb-8">
+        <h4 class="text-sm font-medium text-blue-400 mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          Score Breakdown for {selectedUser.name}
+        </h4>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          {/* Base Score */}
+          <div class="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3">
+            <div class="text-xs text-blue-300 font-medium mb-1">Base Score</div>
+            <div class="text-lg font-bold text-blue-400">{farmingScoreDetails.baseScore.toFixed(1)}%</div>
+            <div class="text-xs text-gray-400 mt-1">
+              {stats.value.reciprocal} of {stats.value.received} reviews reciprocal
+            </div>
+          </div>
+
+          {/* Volume Multiplier */}
+          <div class="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3">
+            <div class="text-xs text-purple-300 font-medium mb-1">Volume Multiplier</div>
+            <div class="text-lg font-bold text-purple-400">{farmingScoreDetails.volumeMultiplier.toFixed(1)}x</div>
+            <div class="text-xs text-gray-400 mt-1">
+              {farmingScoreDetails.volumeReason}
+            </div>
+          </div>
+
+          {/* Account Age Factor */}
+          <div class="bg-orange-900/20 border border-orange-500/30 rounded-lg p-3">
+            <div class="text-xs text-orange-300 font-medium mb-1">Account Age Factor</div>
+            <div class="text-lg font-bold text-orange-400">{farmingScoreDetails.accountAgeMultiplier.toFixed(1)}x</div>
+            <div class="text-xs text-gray-400 mt-1">
+              {farmingScoreDetails.accountAgeReason}
+            </div>
+          </div>
+
+          {/* Time Penalty */}
+          <div class="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+            <div class="text-xs text-red-300 font-medium mb-1">Time Penalty</div>
+            <div class="text-lg font-bold text-red-400">+{farmingScoreDetails.timePenalty.toFixed(1)}</div>
+            <div class="text-xs text-gray-400 mt-1">
+              {farmingScoreDetails.timePenaltyReason}
+            </div>
+          </div>
+        </div>
+
+        {/* Calculation Flow */}
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <div class="text-xs text-gray-300 font-medium mb-2">Calculation Flow:</div>
+          <div class="text-xs text-gray-400 space-y-1">
+            <div>
+              <span class="text-blue-400">{farmingScoreDetails.baseScore.toFixed(1)}%</span> (base) × 
+              <span class="text-purple-400"> {farmingScoreDetails.volumeMultiplier.toFixed(1)}</span> (volume) × 
+              <span class="text-orange-400"> {farmingScoreDetails.accountAgeMultiplier.toFixed(1)}</span> (age) = 
+              <span class="text-yellow-400"> {farmingScoreDetails.scoreAfterMultipliers.toFixed(1)}%</span>
+            </div>
+            <div>
+              <span class="text-yellow-400">{farmingScoreDetails.scoreAfterMultipliers.toFixed(1)}%</span> + 
+              <span class="text-red-400"> {farmingScoreDetails.timePenalty.toFixed(1)}</span> (time penalty) = 
+              <span class="text-white font-medium"> {farmingScoreDetails.finalScore}%</span> (final, capped at 100%)
+            </div>
+            {farmingScoreDetails.quickReciprocations > 0 && (
+              <div class="mt-2 pt-2 border-t border-gray-600">
+                <span class="text-red-300">Quick reciprocations:</span> {farmingScoreDetails.quickReciprocations} of {stats.value.reciprocal} 
+                ({(farmingScoreDetails.suspiciousRatio * 100).toFixed(1)}% within 30 minutes)
+              </div>
+            )}
           </div>
         </div>
       </div>
