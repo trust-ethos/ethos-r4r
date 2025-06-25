@@ -108,12 +108,19 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
             const matchingReceived = received.find(r => r.author.username === targetUsername);
             
             if (matchingReceived) {
-              const givenDate = parseTimestamp(givenReview.timestamp);
-              const receivedDate = parseTimestamp(matchingReceived.timestamp);
-              const timeDiff = Math.abs(givenDate.getTime() - receivedDate.getTime()) / (1000 * 60 * 60 * 24);
+              // Check if both reviews are negative - if so, don't count for quick reciprocation analysis
+              const givenRating = givenReview.content?.rating;
+              const receivedRating = matchingReceived.content?.rating;
               
-              if (timeDiff < 0.0208) { // Under 30 minutes
-                quickReciprocations++;
+              // Only analyze timing if NOT both negative
+              if (!(givenRating === 'negative' && receivedRating === 'negative')) {
+                const givenDate = parseTimestamp(givenReview.timestamp);
+                const receivedDate = parseTimestamp(matchingReceived.timestamp);
+                const timeDiff = Math.abs(givenDate.getTime() - receivedDate.getTime()) / (1000 * 60 * 60 * 24);
+                
+                if (timeDiff < 0.0208) { // Under 30 minutes
+                  quickReciprocations++;
+                }
               }
             }
           });
@@ -230,31 +237,24 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
     const given = givenReviews.value.filter(r => !r.archived);
     const received = receivedReviews.value.filter(r => !r.archived);
     
-    // Count reciprocal reviews using the same logic as our pairing algorithm
-    const userMap = new Map<string, { hasGiven: boolean; hasReceived: boolean }>();
+    // Count reciprocal reviews (excluding negative-negative pairs)
+    let reciprocalCount = 0;
     
-    // Track users from given reviews
-    given.forEach(review => {
-      const username = review.subject.username;
-      if (!userMap.has(username)) {
-        userMap.set(username, { hasGiven: false, hasReceived: false });
+    given.forEach(givenReview => {
+      const targetUsername = givenReview.subject.username;
+      const matchingReceived = received.find(r => r.author.username === targetUsername);
+      
+      if (matchingReceived) {
+        // Check if both reviews are negative - if so, don't count as R4R
+        const givenRating = givenReview.content?.rating;
+        const receivedRating = matchingReceived.content?.rating;
+        
+        // Only count as reciprocal if NOT both negative
+        if (!(givenRating === 'negative' && receivedRating === 'negative')) {
+          reciprocalCount++;
+        }
       }
-      userMap.get(username)!.hasGiven = true;
     });
-    
-    // Track users from received reviews
-    received.forEach(review => {
-      const username = review.author.username;
-      if (!userMap.has(username)) {
-        userMap.set(username, { hasGiven: false, hasReceived: false });
-      }
-      userMap.get(username)!.hasReceived = true;
-    });
-    
-    // Count reciprocal relationships
-    const reciprocalCount = Array.from(userMap.values())
-      .filter(user => user.hasGiven && user.hasReceived)
-      .length;
 
     return {
       given: given.length,
@@ -300,7 +300,11 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         // Update existing entry with received review
         const existing = userMap.get(fromUsername)!;
         existing.receivedReview = receivedReview;
-        existing.isReciprocal = true;
+        
+        // Check if both reviews are negative - if so, don't count as reciprocal R4R
+        const givenRating = existing.givenReview?.content?.rating;
+        const receivedRating = receivedReview.content?.rating;
+        existing.isReciprocal = !(givenRating === 'negative' && receivedRating === 'negative');
         
         // Calculate time difference in days
         if (existing.givenReview && receivedReview) {
@@ -750,7 +754,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
           <h3 class="text-lg font-semibold text-white">Review Relationships</h3>
           <p class="text-sm text-gray-300 mt-1">
-            Reviews paired by user. Green checkmarks indicate reciprocal reviews (both users reviewed each other).
+            Reviews paired by user. Green checkmarks indicate R4R (Review for Review). 
+            Negative-negative pairs are excluded from R4R calculation as they don't represent positive mutual benefit.
           </p>
         </div>
 
@@ -848,19 +853,47 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
                       )}
                     </td>
                     <td class="px-6 py-4 text-center">
-                      {pair.isReciprocal ? (
-                        <div class="flex items-center justify-center">
-                          <svg class="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                          </svg>
-                        </div>
-                      ) : (
-                        <div class="text-gray-500">
-                          <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </div>
-                      )}
+                      {(() => {
+                        const hasGiven = !!pair.givenReview;
+                        const hasReceived = !!pair.receivedReview;
+                        const givenRating = pair.givenReview?.content?.rating;
+                        const receivedRating = pair.receivedReview?.content?.rating;
+                        const bothNegative = givenRating === 'negative' && receivedRating === 'negative';
+                        
+                        if (hasGiven && hasReceived) {
+                          if (bothNegative) {
+                            // Both negative - excluded from R4R
+                            return (
+                              <div class="flex flex-col items-center">
+                                <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
+                                </svg>
+                                <div class="text-xs text-gray-400 mt-1">Excluded</div>
+                                <div class="text-xs text-gray-500">(both negative)</div>
+                              </div>
+                            );
+                          } else {
+                            // Valid R4R
+                            return (
+                              <div class="flex flex-col items-center">
+                                <svg class="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                <div class="text-xs text-green-400 mt-1">R4R</div>
+                              </div>
+                            );
+                          }
+                        } else {
+                          // Not reciprocal
+                          return (
+                            <div class="text-gray-500">
+                              <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </div>
+                          );
+                        }
+                      })()}
                     </td>
                   </tr>
                 ))}
