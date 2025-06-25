@@ -142,7 +142,12 @@ export async function saveLeaderboardEntry(entry: LeaderboardEntry): Promise<voi
   `;
 }
 
-export async function getLeaderboard(limit = 50, offset = 0): Promise<LeaderboardEntry[]> {
+export async function getLeaderboard(
+  limit = 50, 
+  offset = 0, 
+  sortBy = 'farming_score', 
+  sortOrder: 'asc' | 'desc' = 'desc'
+): Promise<LeaderboardEntry[]> {
   // Use a fresh connection for leaderboard queries to avoid connection conflicts
   const databaseUrl = Deno.env.get("DATABASE_URL");
   if (!databaseUrl) {
@@ -154,11 +159,43 @@ export async function getLeaderboard(limit = 50, offset = 0): Promise<Leaderboar
   try {
     await freshClient.connect();
     
-    const result = await freshClient.queryObject<LeaderboardEntry>`
-      SELECT * FROM leaderboard_entries
-      ORDER BY farming_score DESC, reciprocal_reviews DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `;
+    // Validate sortBy column to prevent SQL injection
+    const validColumns = [
+      'farming_score', 'username', 'name', 'score', 'reviews_given', 
+      'reviews_received', 'reciprocal_reviews', 'quick_reciprocations', 
+      'avg_reciprocal_time', 'last_analyzed', 'risk_level'
+    ];
+    
+    if (!validColumns.includes(sortBy)) {
+      sortBy = 'farming_score';
+    }
+    
+    const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
+    
+    // Build the ORDER BY clause based on the column
+    let query;
+    if (sortBy === 'risk_level') {
+      // For risk_level, we need custom ordering since it's not numeric
+      query = `
+        SELECT * FROM leaderboard_entries
+        ORDER BY CASE risk_level 
+          WHEN 'high' THEN 3 
+          WHEN 'moderate' THEN 2 
+          WHEN 'low' THEN 1 
+          ELSE 0 END ${orderDirection}, farming_score DESC
+        LIMIT $1 OFFSET $2
+      `;
+    } else {
+      // For other columns, use standard ordering
+      const secondarySort = sortBy !== 'farming_score' ? ', farming_score DESC' : ', reciprocal_reviews DESC';
+      query = `
+        SELECT * FROM leaderboard_entries
+        ORDER BY ${sortBy} ${orderDirection}${secondarySort}
+        LIMIT $1 OFFSET $2
+      `;
+    }
+    
+    const result = await freshClient.queryObject<LeaderboardEntry>(query, [limit, offset]);
     
     return result.rows;
   } finally {

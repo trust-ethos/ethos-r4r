@@ -5,11 +5,13 @@ export const handler: Handlers = {
   async GET(req) {
     try {
       const url = new URL(req.url);
-      const limit = parseInt(url.searchParams.get("limit") || "50");
+      const limit = parseInt(url.searchParams.get("limit") || "100");
       const offset = parseInt(url.searchParams.get("offset") || "0");
+      const sortBy = url.searchParams.get("sortBy") || "farming_score";
+      const sortOrder = (url.searchParams.get("sortOrder") || "desc") as 'asc' | 'desc';
       
       const [entries, stats] = await Promise.all([
-        getLeaderboard(limit, offset),
+        getLeaderboard(limit, offset, sortBy, sortOrder),
         getLeaderboardStats()
       ]);
 
