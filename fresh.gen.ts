@@ -6,7 +6,9 @@ import * as $_404 from "./routes/_404.tsx";
 import * as $_app from "./routes/_app.tsx";
 import * as $api_ethos_activities_given from "./routes/api/ethos-activities-given.ts";
 import * as $api_ethos_activities_received from "./routes/api/ethos-activities-received.ts";
+import * as $api_ethos_score from "./routes/api/ethos-score.ts";
 import * as $api_ethos_search from "./routes/api/ethos-search.ts";
+import * as $api_ethos_xp from "./routes/api/ethos-xp.ts";
 import * as $api_joke from "./routes/api/joke.ts";
 import * as $api_leaderboard from "./routes/api/leaderboard.ts";
 import * as $api_save_analysis from "./routes/api/save-analysis.ts";
@@ -17,6 +19,7 @@ import * as $profile_xhandle_ from "./routes/profile/[xhandle].tsx";
 import * as $AppWrapper from "./islands/AppWrapper.tsx";
 import * as $Counter from "./islands/Counter.tsx";
 import * as $LeaderboardPage from "./islands/LeaderboardPage.tsx";
+import * as $NetworkGraph from "./islands/NetworkGraph.tsx";
 import * as $ProfileAnalysisPage from "./islands/ProfileAnalysisPage.tsx";
 import * as $ReviewAnalysis from "./islands/ReviewAnalysis.tsx";
 import * as $SearchBar from "./islands/SearchBar.tsx";
@@ -28,7 +31,9 @@ const manifest = {
     "./routes/_app.tsx": $_app,
     "./routes/api/ethos-activities-given.ts": $api_ethos_activities_given,
     "./routes/api/ethos-activities-received.ts": $api_ethos_activities_received,
+    "./routes/api/ethos-score.ts": $api_ethos_score,
     "./routes/api/ethos-search.ts": $api_ethos_search,
+    "./routes/api/ethos-xp.ts": $api_ethos_xp,
     "./routes/api/joke.ts": $api_joke,
     "./routes/api/leaderboard.ts": $api_leaderboard,
     "./routes/api/save-analysis.ts": $api_save_analysis,
@@ -41,6 +46,7 @@ const manifest = {
     "./islands/AppWrapper.tsx": $AppWrapper,
     "./islands/Counter.tsx": $Counter,
     "./islands/LeaderboardPage.tsx": $LeaderboardPage,
+    "./islands/NetworkGraph.tsx": $NetworkGraph,
     "./islands/ProfileAnalysisPage.tsx": $ProfileAnalysisPage,
     "./islands/ReviewAnalysis.tsx": $ReviewAnalysis,
     "./islands/SearchBar.tsx": $SearchBar,

@@ -72,6 +72,25 @@ async function initializeTables(): Promise<void> {
     // Column already exists - that's fine
   }
 
+  // Migration: Add ethos_score and ethos_xp columns
+  try {
+    await client.queryObject`
+      ALTER TABLE leaderboard_entries 
+      ADD COLUMN IF NOT EXISTS ethos_score INTEGER DEFAULT 0
+    `;
+  } catch (error) {
+    // Column already exists - that's fine
+  }
+
+  try {
+    await client.queryObject`
+      ALTER TABLE leaderboard_entries 
+      ADD COLUMN IF NOT EXISTS ethos_xp INTEGER DEFAULT 0
+    `;
+  } catch (error) {
+    // Column already exists - that's fine
+  }
+
   // Create index for better performance
   await client.queryObject`
     CREATE INDEX IF NOT EXISTS idx_leaderboard_farming_score ON leaderboard_entries(farming_score DESC)
@@ -102,6 +121,8 @@ export interface LeaderboardEntry {
   last_analyzed: string;
   analysis_version: string;
   processing_time: number;
+  ethos_score?: number;
+  ethos_xp?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -114,14 +135,14 @@ export async function saveLeaderboardEntry(entry: LeaderboardEntry): Promise<voi
       userkey, username, name, avatar, score, reviews_given, reviews_received,
       reciprocal_reviews, farming_score, risk_level, quick_reciprocations,
       avg_reciprocal_time, last_analyzed, analysis_version, processing_time,
-      updated_at
+      ethos_score, ethos_xp, updated_at
     ) VALUES (
       ${entry.userkey}, ${entry.username}, ${entry.name}, ${entry.avatar},
       ${entry.score}, ${entry.reviews_given}, ${entry.reviews_received},
       ${entry.reciprocal_reviews}, ${entry.farming_score}, ${entry.risk_level},
       ${entry.quick_reciprocations}, ${entry.avg_reciprocal_time},
       ${entry.last_analyzed}, ${entry.analysis_version}, ${entry.processing_time},
-      NOW()
+      ${entry.ethos_score || 0}, ${entry.ethos_xp || 0}, NOW()
     )
     ON CONFLICT (userkey) DO UPDATE SET
       username = EXCLUDED.username,
@@ -138,6 +159,8 @@ export async function saveLeaderboardEntry(entry: LeaderboardEntry): Promise<voi
       last_analyzed = EXCLUDED.last_analyzed,
       analysis_version = EXCLUDED.analysis_version,
       processing_time = EXCLUDED.processing_time,
+      ethos_score = EXCLUDED.ethos_score,
+      ethos_xp = EXCLUDED.ethos_xp,
       updated_at = NOW()
   `;
 }
@@ -163,7 +186,7 @@ export async function getLeaderboard(
     const validColumns = [
       'farming_score', 'username', 'name', 'score', 'reviews_given', 
       'reviews_received', 'reciprocal_reviews', 'quick_reciprocations', 
-      'avg_reciprocal_time', 'last_analyzed', 'risk_level'
+      'avg_reciprocal_time', 'last_analyzed', 'risk_level', 'ethos_xp'
     ];
     
     if (!validColumns.includes(sortBy)) {

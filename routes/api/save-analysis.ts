@@ -43,7 +43,9 @@ export const handler: Handlers = {
         avg_reciprocal_time: avgReciprocalTime,
         last_analyzed: new Date().toISOString(),
         analysis_version: 'v1.0',
-        processing_time: analysisData.processingTime || 0
+        processing_time: analysisData.processingTime || 0,
+        ethos_score: analysisData.ethosScore || 0,
+        ethos_xp: analysisData.ethosXp || 0
       };
 
       await saveLeaderboardEntry(entry);

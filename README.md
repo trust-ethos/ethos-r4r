@@ -14,7 +14,14 @@ A sophisticated web application for analyzing "Review 4 Review" patterns and rep
 - Visual indicators for "Review 4 Review" patterns
 - Time gap analysis between reciprocal reviews
 
-### 🚨 **Farming Score Algorithm**
+### 📊 **Interactive Network Visualization**
+- **GPU-accelerated network graphs** powered by [Cosmograph](https://cosmograph.app/)
+- Visual representation of review relationships between users
+- Click-to-navigate between user profiles
+- Color-coded nodes and edges based on review types and reciprocal status
+- Real-time force-directed layout simulation
+
+### 🚨 **R4R Score Algorithm**
 - Sophisticated percentage-based penalty system
 - Risk assessment: Low (0-39%), Moderate (40-69%), High (70-100%)
 - Enhanced detection based on quick reciprocation patterns (<30 minutes)
@@ -37,7 +44,31 @@ A sophisticated web application for analyzing "Review 4 Review" patterns and rep
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **State Management**: Preact Signals
+- **Network Visualization**: Cosmograph (GPU-accelerated WebGL)
 - **APIs**: Ethos Search API (v1) & Activity API (v2)
+
+## 📊 Network Visualization
+
+The interactive network graph shows:
+
+### **Nodes (Users)**
+- **Blue**: Central user being analyzed
+- **Green**: Users with reciprocal review relationships
+- **Gray**: Users with one-way review relationships
+- **Size**: Proportional to user importance
+
+### **Edges (Reviews)**
+- **Green**: Positive reviews
+- **Red**: Negative reviews  
+- **Yellow**: Neutral reviews
+- **Thickness**: Indicates reciprocal relationships (thicker = mutual)
+- **Color intensity**: Based on timing (red = suspicious quick reciprocal)
+
+### **Interactions**
+- **Click nodes**: Navigate to user profiles
+- **Hover**: View user details
+- **Zoom/Pan**: Explore large networks
+- **Real-time physics**: GPU-accelerated force simulation
 
 ## 🏃‍♂️ Quick Start
 

@@ -1,5 +1,6 @@
 import { useSignal, useComputed } from "@preact/signals";
 import { useEffect } from "preact/hooks";
+import NetworkGraph from "./NetworkGraph.tsx";
 
 // TypeScript interfaces for Ethos API v2 Activities
 interface EthosActivity {
@@ -24,6 +25,10 @@ interface EthosActivity {
   content?: {
     text: string;
     rating?: "positive" | "negative" | "neutral";
+  };
+  data?: {
+    score: "positive" | "negative" | "neutral";
+    comment: string;
   };
 }
 
@@ -364,6 +369,29 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         ? reciprocalPairs.reduce((sum, pair) => sum + (pair.timeDifference || 0), 0) / reciprocalPairs.length
         : 0;
 
+      // Fetch Ethos score and XP
+      let ethosScore = 0;
+      let ethosXp = 0;
+
+      try {
+        const [scoreResponse, xpResponse] = await Promise.all([
+          fetch(`/api/ethos-score?userkey=${encodeURIComponent(selectedUser.userkey)}`),
+          fetch(`/api/ethos-xp?userkey=${encodeURIComponent(selectedUser.userkey)}`)
+        ]);
+
+        if (scoreResponse.ok) {
+          const scoreData = await scoreResponse.json();
+          ethosScore = scoreData.score || 0;
+        }
+
+        if (xpResponse.ok) {
+          const xpData = await xpResponse.json();
+          ethosXp = xpData || 0;
+        }
+      } catch (ethosError) {
+        console.warn('⚠️ Failed to fetch Ethos score/XP:', ethosError);
+      }
+
       const analysisData = {
         userkey: selectedUser.userkey,
         username: selectedUser.username,
@@ -376,6 +404,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         farmingScore: stats.value.r4rScore,
         quickReciprocations,
         avgReciprocalTime,
+        ethosScore,
+        ethosXp,
         processingTime: 0 // We can add timing later if needed
       };
 
@@ -749,6 +779,14 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         </div>
       </div>
 
+      {/* Network Graph */}
+      {reviewPairs.value.length > 0 && (
+        <NetworkGraph 
+          selectedUser={selectedUser}
+          reviewPairs={reviewPairs.value}
+        />
+      )}
+
       {/* Review Pairs Table */}
       <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
         <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
@@ -812,8 +850,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
                     <td class="px-6 py-4">
                       {pair.givenReview ? (
                         <div class="text-sm">
-                          <div class={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getRatingColor(pair.givenReview.content?.rating)}`}>
-                            {pair.givenReview.content?.rating || "Review"}
+                          <div class={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getRatingColor(pair.givenReview.data?.score)}`}>
+                            {pair.givenReview.data?.score ? pair.givenReview.data.score.charAt(0).toUpperCase() + pair.givenReview.data.score.slice(1) : "Review"}
                           </div>
                           <div class="text-xs text-gray-400 mt-1">
                             {formatDate(pair.givenReview.timestamp)}
@@ -826,8 +864,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
                     <td class="px-6 py-4">
                       {pair.receivedReview ? (
                         <div class="text-sm">
-                          <div class={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getRatingColor(pair.receivedReview.content?.rating)}`}>
-                            {pair.receivedReview.content?.rating || "Review"}
+                          <div class={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getRatingColor(pair.receivedReview.data?.score)}`}>
+                            {pair.receivedReview.data?.score ? pair.receivedReview.data.score.charAt(0).toUpperCase() + pair.receivedReview.data.score.slice(1) : "Review"}
                           </div>
                           <div class="text-xs text-gray-400 mt-1">
                             {formatDate(pair.receivedReview.timestamp)}
@@ -856,8 +894,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
                       {(() => {
                         const hasGiven = !!pair.givenReview;
                         const hasReceived = !!pair.receivedReview;
-                        const givenRating = pair.givenReview?.content?.rating;
-                        const receivedRating = pair.receivedReview?.content?.rating;
+                        const givenRating = pair.givenReview?.data?.score;
+                        const receivedRating = pair.receivedReview?.data?.score;
                         const bothNegative = givenRating === 'negative' && receivedRating === 'negative';
                         
                         if (hasGiven && hasReceived) {

@@ -17,6 +17,8 @@ interface LeaderboardEntry {
   last_analyzed: string;
   analysis_version: string;
   processing_time: number;
+  ethos_score?: number;
+  ethos_xp?: number;
 }
 
 interface LeaderboardStats {
@@ -121,6 +123,8 @@ export default function LeaderboardPage() {
       default: return 'bg-gray-900/30 border-gray-500/50 text-gray-400';
     }
   };
+
+
 
   if (isLoading.value) {
     return (
@@ -228,6 +232,12 @@ export default function LeaderboardPage() {
                   </th>
                   <th 
                     class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 transition-colors"
+                    onClick={() => handleSort('ethos_xp')}
+                  >
+                    Ethos XP {getSortIcon('ethos_xp')}
+                  </th>
+                  <th 
+                    class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 transition-colors"
                     onClick={() => handleSort('reviews_received')}
                   >
                     Reviews {getSortIcon('reviews_received')}
@@ -294,6 +304,11 @@ export default function LeaderboardPage() {
                       <span class={`inline-flex px-2 py-1 rounded-full text-xs font-medium border ${getRiskBadgeColor(entry.risk_level)}`}>
                         {entry.risk_level.toUpperCase()}
                       </span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                      <div class="text-lg font-semibold text-cyan-400">
+                        {entry.ethos_xp ?? '—'}
+                      </div>
                     </td>
                     <td class="px-6 py-4 text-center">
                       <div class="text-sm text-gray-300">
