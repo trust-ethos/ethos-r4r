@@ -22,7 +22,7 @@ interface NetworkLink {
   target: string;
   color?: string;
   width?: number;
-  reviewType?: 'positive' | 'negative' | 'neutral' | 'reciprocal';
+  reviewType?: 'reciprocal' | 'given' | 'received';
   isReciprocal?: boolean;
   timeDifference?: number;
 }
@@ -37,6 +37,7 @@ interface ReviewPair {
   receivedReview?: any;
   isReciprocal: boolean;
   timeDifference?: number;
+  r4rScore?: number; // Add R4R score for high-risk user highlighting
 }
 
 interface NetworkGraphProps {
@@ -48,32 +49,45 @@ interface NetworkGraphProps {
     score: number;
   };
   reviewPairs: ReviewPair[];
+  centralUserR4rScore?: number; // R4R score for the central user
 }
 
-export default function NetworkGraph({ selectedUser, reviewPairs }: NetworkGraphProps) {
+export default function NetworkGraph({ selectedUser, reviewPairs, centralUserR4rScore }: NetworkGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cosmographRef = useRef<any>(null);
   const isLoading = useSignal(true);
   const error = useSignal<string | null>(null);
 
   // Helper function to get color based on review type
-  const getReviewColor = (reviewType: string): string => {
-    switch (reviewType) {
-      case 'positive': return '#10B981'; // Green
-      case 'negative': return '#EF4444'; // Red
-      case 'neutral': return '#F59E0B'; // Yellow
-      default: return '#6B7280'; // Gray
+  // Function to get node color based on relationship type and R4R score
+  const getNodeColor = (relationshipType: 'central' | 'reciprocal' | 'given' | 'received', r4rScore?: number): string => {
+    // High R4R score (≥70%) gets red color regardless of relationship type
+    if (r4rScore !== undefined && r4rScore >= 70) {
+      return '#EF4444'; // Red for high R4R score users
+    }
+    
+    switch (relationshipType) {
+      case 'central': return '#3B82F6'; // Blue for central user
+      case 'reciprocal': return '#10B981'; // Green for reciprocal
+      case 'given': return '#60A5FA'; // Light blue for given only
+      case 'received': return '#A78BFA'; // Light purple for received only
+      default: return '#6B7280'; // Gray fallback
     }
   };
 
-  // Helper function to get color based on reciprocal timing
-  const getReciprocalColor = (timeDifference?: number): string => {
-    if (!timeDifference) return '#10B981'; // Default green
+  // Simplified color scheme - just match the node colors for consistency
+  const getLinkColor = (relationshipType: 'reciprocal' | 'given' | 'received', targetR4rScore?: number): string => {
+    // If target has high R4R score, make the link red
+    if (targetR4rScore !== undefined && targetR4rScore >= 70) {
+      return '#EF4444'; // Red for connections to high R4R score users
+    }
     
-    if (timeDifference < 0.0208) return '#EF4444'; // Red for very quick (< 30 minutes)
-    if (timeDifference < 1) return '#F59E0B'; // Yellow for quick (< 1 day)
-    if (timeDifference < 7) return '#3B82F6'; // Blue for moderate (< 1 week)
-    return '#10B981'; // Green for normal timing
+    switch (relationshipType) {
+      case 'reciprocal': return '#10B981'; // Green - matches reciprocal nodes
+      case 'given': return '#60A5FA'; // Light blue - matches given nodes  
+      case 'received': return '#A78BFA'; // Light purple - matches received nodes
+      default: return '#6B7280'; // Gray fallback
+    }
   };
 
   useEffect(() => {
@@ -102,70 +116,121 @@ export default function NetworkGraph({ selectedUser, reviewPairs }: NetworkGraph
           avatar: selectedUser.avatar,
           score: selectedUser.score,
           size: 24, // Larger size for central node
-          color: '#3B82F6', // Blue for central user
+          color: getNodeColor('central', centralUserR4rScore),
           label: `@${selectedUser.username}`, // Show Twitter handle
           image: selectedUser.avatar // Profile picture
         });
 
-        // Group reciprocal and non-reciprocal relationships
+        // Group relationships by type for better positioning
         const reciprocalPairs: ReviewPair[] = [];
-        const oneWayPairs: ReviewPair[] = [];
+        const oneWayGivenPairs: ReviewPair[] = [];
+        const oneWayReceivedPairs: ReviewPair[] = [];
         
         reviewPairs.forEach(pair => {
           if (pair.isReciprocal) {
             reciprocalPairs.push(pair);
-          } else {
-            oneWayPairs.push(pair);
+          } else if (pair.givenReview && !pair.receivedReview) {
+            oneWayGivenPairs.push(pair);
+          } else if (pair.receivedReview && !pair.givenReview) {
+            oneWayReceivedPairs.push(pair);
           }
         });
 
-        // Add connected users and their relationships
-        reviewPairs.forEach(pair => {
-          // Add the connected user node if not already added
-          if (!nodes.find(n => n.id === pair.userkey)) {
-            nodes.push({
-              id: pair.userkey,
-              userkey: pair.userkey,
-              username: pair.username,
-              name: pair.name,
-              avatar: pair.avatar,
-              score: pair.score,
-              size: pair.isReciprocal ? 18 : 14, // Larger size for reciprocal relationships
-              color: pair.isReciprocal ? '#10B981' : '#6B7280', // Green for reciprocal, gray for one-way
-              label: `@${pair.username}`, // Show Twitter handle
-              image: pair.avatar // Profile picture
-            });
-          }
+        // Add connected users with pre-calculated positions for better grouping
+        const centerX = 0;
+        const centerY = 0;
+        const reciprocalRadius = 150; // Smaller inner circle for better zoom
+        const oneWayRadius = 250; // Smaller outer circle for better zoom
+        
+        // Position reciprocal users in inner circle
+        reciprocalPairs.forEach((pair, index) => {
+          const angle = (index / reciprocalPairs.length) * 2 * Math.PI;
+          const x = centerX + Math.cos(angle) * reciprocalRadius;
+          const y = centerY + Math.sin(angle) * reciprocalRadius;
+          
+          nodes.push({
+            id: pair.userkey,
+            userkey: pair.userkey,
+            username: pair.username,
+            name: pair.name,
+            avatar: pair.avatar,
+            score: pair.score,
+            size: 18,
+            color: getNodeColor('reciprocal', pair.r4rScore),
+            label: `@${pair.username}`,
+            image: pair.avatar,
+            x: x,
+            y: y
+          });
+        });
 
-          // Handle reciprocal relationships with special grouped visualization
+        // Position one-way given users in upper outer arc
+        oneWayGivenPairs.forEach((pair, index) => {
+          const angle = (index / Math.max(oneWayGivenPairs.length, 1)) * Math.PI - Math.PI/2; // Upper semicircle
+          const x = centerX + Math.cos(angle) * oneWayRadius;
+          const y = centerY + Math.sin(angle) * oneWayRadius;
+          
+          nodes.push({
+            id: pair.userkey,
+            userkey: pair.userkey,
+            username: pair.username,
+            name: pair.name,
+            avatar: pair.avatar,
+            score: pair.score,
+            size: 14,
+            color: getNodeColor('given', pair.r4rScore),
+            label: `@${pair.username}`,
+            image: pair.avatar,
+            x: x,
+            y: y
+          });
+        });
+
+        // Position one-way received users in lower outer arc
+        oneWayReceivedPairs.forEach((pair, index) => {
+          const angle = (index / Math.max(oneWayReceivedPairs.length, 1)) * Math.PI + Math.PI/2; // Lower semicircle
+          const x = centerX + Math.cos(angle) * oneWayRadius;
+          const y = centerY + Math.sin(angle) * oneWayRadius;
+          
+          nodes.push({
+            id: pair.userkey,
+            userkey: pair.userkey,
+            username: pair.username,
+            name: pair.name,
+            avatar: pair.avatar,
+            score: pair.score,
+            size: 14,
+            color: getNodeColor('received', pair.r4rScore),
+            label: `@${pair.username}`,
+            image: pair.avatar,
+            x: x,
+            y: y
+          });
+        });
+
+        // Create links for all relationships - simplified colors
+        reviewPairs.forEach(pair => {
+          // Handle reciprocal relationships
           if (pair.isReciprocal && pair.givenReview && pair.receivedReview) {
-            // Create a single bidirectional link for reciprocal relationships
-            const givenType = pair.givenReview.data?.score || 'neutral';
-            const receivedType = pair.receivedReview.data?.score || 'neutral';
-            
-            // Use timing-based color for reciprocal relationships
-            const reciprocalColor = getReciprocalColor(pair.timeDifference);
-            
             links.push({
               source: selectedUser.userkey,
               target: pair.userkey,
-              reviewType: 'reciprocal', // Special type for reciprocal
-              color: reciprocalColor,
-              width: 5, // Thicker for reciprocal relationships
+              reviewType: 'reciprocal',
+              color: getLinkColor('reciprocal', pair.r4rScore), // Pass R4R score for color decision
+              width: 4, // Thicker for reciprocal relationships
               isReciprocal: true,
               timeDifference: pair.timeDifference
             });
           } else {
-            // Handle one-way relationships with individual links
+            // Handle one-way relationships
             
             // Add link for given review
             if (pair.givenReview) {
-              const reviewType = pair.givenReview.data?.score || 'neutral';
               links.push({
                 source: selectedUser.userkey,
                 target: pair.userkey,
-                reviewType: reviewType as 'positive' | 'negative' | 'neutral',
-                color: getReviewColor(reviewType),
+                reviewType: 'given',
+                color: getLinkColor('given', pair.r4rScore), // Pass R4R score for color decision
                 width: 2,
                 isReciprocal: false,
                 timeDifference: pair.timeDifference
@@ -174,12 +239,11 @@ export default function NetworkGraph({ selectedUser, reviewPairs }: NetworkGraph
 
             // Add link for received review (if no given review)
             if (pair.receivedReview && !pair.givenReview) {
-              const reviewType = pair.receivedReview.data?.score || 'neutral';
               links.push({
                 source: pair.userkey,
                 target: selectedUser.userkey,
-                reviewType: reviewType as 'positive' | 'negative' | 'neutral',
-                color: getReviewColor(reviewType),
+                reviewType: 'received',
+                color: getLinkColor('received', pair.r4rScore), // Pass R4R score for color decision
                 width: 2,
                 isReciprocal: false,
                 timeDifference: pair.timeDifference
@@ -188,21 +252,21 @@ export default function NetworkGraph({ selectedUser, reviewPairs }: NetworkGraph
           }
         });
 
-        // Initialize Cosmograph
+        // Initialize Cosmograph with settings optimized for grouped layout
         cosmographInstance = new Cosmograph(containerRef.current, {
           nodeSize: (node: NetworkNode) => node.size || 16,
           nodeColor: (node: NetworkNode) => node.color || '#6B7280',
           linkColor: (link: NetworkLink) => link.color || '#374151',
           linkWidth: (link: NetworkLink) => link.width || 1,
           backgroundColor: '#111827', // Dark background to match theme
-          spaceSize: 8192,
-          // Spread out nodes more for better visibility
-          simulationRepulsion: 4.0, // Increased repulsion to spread nodes
-          simulationLinkSpring: 0.5, // Reduced spring force
-          simulationLinkDistance: 100, // Increased link distance
-          simulationFriction: 0.75, // Reduced friction for more movement
-          simulationGravity: 0.1, // Reduced gravity
-          simulationCenter: 0.05, // Reduced centering force
+          spaceSize: 2048, // Smaller space for better initial zoom
+          // Minimal simulation for static positioning
+          simulationRepulsion: 0, // No repulsion
+          simulationLinkSpring: 0, // No spring force
+          simulationLinkDistance: 100, // Keep for reference
+          simulationFriction: 0.99, // Very high friction (settles quickly)
+          simulationGravity: 0, // No gravity
+          simulationCenter: 0, // No centering force
           showFPSMonitor: false,
           pixelRatio: 2,
           scaleNodesOnZoom: true,
@@ -234,6 +298,14 @@ export default function NetworkGraph({ selectedUser, reviewPairs }: NetworkGraph
 
         // Set the data
         cosmographInstance.setData(nodes, links);
+
+        // Set initial zoom to show the network at a reasonable scale
+        // Wait a bit for the layout to settle, then zoom to fit nicely
+        setTimeout(() => {
+          if (cosmographInstance) {
+            cosmographInstance.zoomToFit(0); // No animation - instant zoom to fit
+          }
+        }, 100); // Shorter delay since no simulation
 
         isLoading.value = false;
       } catch (err) {
@@ -301,8 +373,8 @@ export default function NetworkGraph({ selectedUser, reviewPairs }: NetworkGraph
         
         <div 
           ref={containerRef}
-          class="w-full h-96 bg-gray-900 rounded-b-lg"
-          style={{ minHeight: '400px' }}
+          class="w-full h-64 bg-gray-900 rounded-b-lg"
+          style={{ minHeight: '256px' }}
         />
       </div>
 
@@ -319,11 +391,19 @@ export default function NetworkGraph({ selectedUser, reviewPairs }: NetworkGraph
               </div>
               <div class="flex items-center">
                 <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                <span class="text-gray-300">Reciprocal Reviews</span>
+                <span class="text-gray-300">Reciprocal (inner circle)</span>
               </div>
               <div class="flex items-center">
-                <div class="w-3 h-3 rounded-full bg-gray-500 mr-2"></div>
-                <span class="text-gray-300">One-way Reviews</span>
+                <div class="w-3 h-3 rounded-full bg-blue-400 mr-2"></div>
+                <span class="text-gray-300">Reviews Given (upper arc)</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded-full bg-purple-400 mr-2"></div>
+                <span class="text-gray-300">Reviews Received (lower arc)</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                <span class="text-gray-300">High R4R Score (≥70%)</span>
               </div>
             </div>
           </div>
@@ -332,15 +412,19 @@ export default function NetworkGraph({ selectedUser, reviewPairs }: NetworkGraph
             <div class="space-y-1">
               <div class="flex items-center">
                 <div class="w-4 h-1 bg-green-500 mr-2"></div>
-                <span class="text-gray-300">Positive Review</span>
+                <span class="text-gray-300">Reciprocal Reviews</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-4 h-1 bg-blue-400 mr-2"></div>
+                <span class="text-gray-300">Reviews Given</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-4 h-1 bg-purple-400 mr-2"></div>
+                <span class="text-gray-300">Reviews Received</span>
               </div>
               <div class="flex items-center">
                 <div class="w-4 h-1 bg-red-500 mr-2"></div>
-                <span class="text-gray-300">Negative Review</span>
-              </div>
-              <div class="flex items-center">
-                <div class="w-4 h-1 bg-yellow-500 mr-2"></div>
-                <span class="text-gray-300">Neutral Review</span>
+                <span class="text-gray-300">High R4R Connections</span>
               </div>
             </div>
           </div>

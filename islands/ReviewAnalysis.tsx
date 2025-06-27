@@ -49,6 +49,7 @@ interface ReviewPair {
   receivedReview?: EthosActivity;
   isReciprocal: boolean;
   timeDifference?: number; // Time difference in hours (absolute value)
+  r4rScore?: number; // R4R score from leaderboard database
 }
 
 interface ReviewAnalysisProps {
@@ -67,37 +68,30 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
   const receivedReviews = useSignal<EthosActivity[]>([]);
   const isLoading = useSignal(true);
   const error = useSignal<string | null>(null);
+  const userR4rScores = useSignal<Map<string, number>>(new Map()); // Cache R4R scores by username
 
   // Computed R4R Score Details
   const r4rScoreDetails = useComputed(() => {
     const given = givenReviews.value.filter(r => !r.archived);
     const received = receivedReviews.value.filter(r => !r.archived);
     
-    // Count reciprocal reviews using the same logic as our pairing algorithm
-    const userMap = new Map<string, { hasGiven: boolean; hasReceived: boolean }>();
+    // Count reciprocal reviews - only positive-positive pairs count as true R4R
+    let reciprocalCount = 0;
     
-    // Track users from given reviews
-    given.forEach(review => {
-      const username = review.subject.username;
-      if (!userMap.has(username)) {
-        userMap.set(username, { hasGiven: false, hasReceived: false });
+    given.forEach(givenReview => {
+      const targetUsername = givenReview.subject.username;
+      const matchingReceived = received.find(r => r.author.username === targetUsername);
+      
+      if (matchingReceived) {
+        // Only count as R4R if BOTH reviews are positive
+        const givenRating = givenReview.data?.score || givenReview.content?.rating;
+        const receivedRating = matchingReceived.data?.score || matchingReceived.content?.rating;
+        
+        if (givenRating === 'positive' && receivedRating === 'positive') {
+          reciprocalCount++;
+        }
       }
-      userMap.get(username)!.hasGiven = true;
     });
-    
-    // Track users from received reviews
-    received.forEach(review => {
-      const username = review.author.username;
-      if (!userMap.has(username)) {
-        userMap.set(username, { hasGiven: false, hasReceived: false });
-      }
-      userMap.get(username)!.hasReceived = true;
-    });
-    
-    // Count reciprocal relationships
-    const reciprocalCount = Array.from(userMap.values())
-      .filter(user => user.hasGiven && user.hasReceived)
-      .length;
 
     // Calculate R4R Score with improved algorithm
     return received.length > 0 
@@ -113,12 +107,11 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
             const matchingReceived = received.find(r => r.author.username === targetUsername);
             
             if (matchingReceived) {
-              // Check if both reviews are negative - if so, don't count for quick reciprocation analysis
-              const givenRating = givenReview.content?.rating;
-              const receivedRating = matchingReceived.content?.rating;
+              // Only analyze timing for positive-positive pairs (true R4R)
+              const givenRating = givenReview.data?.score || givenReview.content?.rating;
+              const receivedRating = matchingReceived.data?.score || matchingReceived.content?.rating;
               
-              // Only analyze timing if NOT both negative
-              if (!(givenRating === 'negative' && receivedRating === 'negative')) {
+              if (givenRating === 'positive' && receivedRating === 'positive') {
                 const givenDate = parseTimestamp(givenReview.timestamp);
                 const receivedDate = parseTimestamp(matchingReceived.timestamp);
                 const timeDiff = Math.abs(givenDate.getTime() - receivedDate.getTime()) / (1000 * 60 * 60 * 24);
@@ -242,7 +235,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
     const given = givenReviews.value.filter(r => !r.archived);
     const received = receivedReviews.value.filter(r => !r.archived);
     
-    // Count reciprocal reviews (excluding negative-negative pairs)
+    // Count reciprocal reviews - only positive-positive pairs count as true R4R
     let reciprocalCount = 0;
     
     given.forEach(givenReview => {
@@ -250,12 +243,11 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
       const matchingReceived = received.find(r => r.author.username === targetUsername);
       
       if (matchingReceived) {
-        // Check if both reviews are negative - if so, don't count as R4R
-        const givenRating = givenReview.content?.rating;
-        const receivedRating = matchingReceived.content?.rating;
+        // Only count as R4R if BOTH reviews are positive
+        const givenRating = givenReview.data?.score || givenReview.content?.rating;
+        const receivedRating = matchingReceived.data?.score || matchingReceived.content?.rating;
         
-        // Only count as reciprocal if NOT both negative
-        if (!(givenRating === 'negative' && receivedRating === 'negative')) {
+        if (givenRating === 'positive' && receivedRating === 'positive') {
           reciprocalCount++;
         }
       }
@@ -269,10 +261,29 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
     };
   });
 
+  // Function to fetch R4R score for a user
+  const fetchR4rScore = async (username: string): Promise<number | undefined> => {
+    try {
+      const response = await fetch('/api/leaderboard');
+      if (response.ok) {
+        const data = await response.json();
+        const userEntry = data.leaderboard?.find((entry: any) => entry.username === username);
+        return userEntry?.farming_score || undefined;
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch R4R score for ${username}:`, error);
+    }
+    return undefined;
+  };
+
   // Computed review pairs
   const reviewPairs = useComputed(() => {
     const pairs: ReviewPair[] = [];
     const userMap = new Map<string, ReviewPair>();
+    
+    // Force reactivity to userR4rScores by accessing it
+    const r4rScoreCache = userR4rScores.value;
+    console.log(`🔄 Computing review pairs with ${r4rScoreCache.size} R4R scores in cache`);
 
     // First, create a map of all unique users from given reviews
     givenReviews.value.filter(r => !r.archived).forEach(givenReview => {
@@ -283,6 +294,9 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
       const uniqueKey = targetUsername;
       
       if (!userMap.has(uniqueKey)) {
+        const r4rScore = r4rScoreCache.get(targetUsername);
+        console.log(`🔍 Looking up R4R score for ${targetUsername}: ${r4rScore}`);
+        
         userMap.set(uniqueKey, {
           userkey: targetUserkey,
           name: givenReview.subject.name,
@@ -292,7 +306,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           givenReview: givenReview,
           receivedReview: undefined,
           isReciprocal: false,
-          timeDifference: undefined
+          timeDifference: undefined,
+          r4rScore: r4rScore // Get cached R4R score
         });
       }
     });
@@ -306,10 +321,10 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         const existing = userMap.get(fromUsername)!;
         existing.receivedReview = receivedReview;
         
-        // Check if both reviews are negative - if so, don't count as reciprocal R4R
-        const givenRating = existing.givenReview?.content?.rating;
-        const receivedRating = receivedReview.content?.rating;
-        existing.isReciprocal = !(givenRating === 'negative' && receivedRating === 'negative');
+        // Only count as reciprocal R4R if BOTH reviews are positive
+        const givenRating = existing.givenReview?.data?.score || existing.givenReview?.content?.rating;
+        const receivedRating = receivedReview.data?.score || receivedReview.content?.rating;
+        existing.isReciprocal = (givenRating === 'positive' && receivedRating === 'positive');
         
         // Calculate time difference in days
         if (existing.givenReview && receivedReview) {
@@ -331,6 +346,9 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         }
       } else {
         // Create new entry for users who only have received reviews
+        const r4rScore = r4rScoreCache.get(fromUsername);
+        console.log(`🔍 Looking up R4R score for ${fromUsername}: ${r4rScore}`);
+        
         userMap.set(fromUsername, {
           userkey: receivedReview.author.userkey,
           name: receivedReview.author.name,
@@ -340,7 +358,8 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           givenReview: undefined,
           receivedReview: receivedReview,
           isReciprocal: false,
-          timeDifference: undefined
+          timeDifference: undefined,
+          r4rScore: r4rScore // Get cached R4R score
         });
       }
     });
@@ -463,11 +482,62 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
           saveAnalysisToDatabase();
         }, 100);
 
+        // Load R4R scores for all users after reviews are loaded
+        loadR4rScores();
+
       } catch (err) {
         console.error("Error fetching reviews:", err);
         error.value = "Failed to load review data. Please try again.";
       } finally {
         isLoading.value = false;
+      }
+    };
+
+    // Function to load R4R scores for all users in the review pairs
+    const loadR4rScores = async () => {
+      try {
+        console.log('🔄 Loading R4R scores from leaderboard...');
+        const response = await fetch('/api/leaderboard');
+        
+        if (!response.ok) {
+          console.warn(`⚠️ Leaderboard API returned status: ${response.status}`);
+          return;
+        }
+        
+        const data = await response.json();
+        console.log('📊 Leaderboard API response:', data);
+        
+        const scoreMap = new Map<string, number>();
+        
+        // Check if data has the expected structure
+        if (data.ok && data.entries) {
+          // New API format with entries array
+          data.entries.forEach((entry: any) => {
+            if (entry.username && entry.farming_score !== null && entry.farming_score !== undefined) {
+              scoreMap.set(entry.username, entry.farming_score);
+              console.log(`📈 Mapped ${entry.username} -> ${entry.farming_score}%`);
+            }
+          });
+        } else if (data.leaderboard) {
+          // Old API format with leaderboard array
+          data.leaderboard.forEach((entry: any) => {
+            if (entry.username && entry.farming_score !== null && entry.farming_score !== undefined) {
+              scoreMap.set(entry.username, entry.farming_score);
+              console.log(`📈 Mapped ${entry.username} -> ${entry.farming_score}%`);
+            }
+          });
+        } else {
+          console.warn('⚠️ Unexpected leaderboard data structure:', data);
+        }
+        
+        userR4rScores.value = scoreMap;
+        console.log(`✅ Loaded R4R scores for ${scoreMap.size} users:`, Array.from(scoreMap.entries()));
+        
+        // Force a re-render by updating the signal
+        userR4rScores.value = new Map(scoreMap);
+        
+      } catch (error) {
+        console.error('❌ Failed to load R4R scores:', error);
       }
     };
 
@@ -672,40 +742,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
       </div>
 
       {/* R4R Score Disclaimer */}
-      <div class="bg-gray-900/50 border border-gray-600 rounded-lg p-4 mb-8">
-        <div class="flex items-start gap-3">
-          <div class="flex-shrink-0 mt-1">
-            <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div class="flex-1">
-            <h4 class="text-sm font-medium text-yellow-400 mb-2">How the R4R Score is Calculated</h4>
-            <div class="text-xs text-gray-300 space-y-2">
-              <p>
-                <strong>Base Score:</strong> Percentage of received reviews that are reciprocal (you reviewed them back)
-              </p>
-              <p>
-                <strong>Volume Multiplier:</strong> Higher review volumes get larger multipliers (1.05x-1.2x) as mass reciprocal activity is more suspicious
-              </p>
-              <p>
-                <strong>Account Age Factor:</strong> New accounts with high activity rates get additional multipliers (1.1x-1.4x)
-              </p>
-              <p>
-                <strong>Time Penalties:</strong> Quick reciprocations (under 30 minutes) add 2-15 points based on frequency
-              </p>
-              <p>
-                <strong>Risk Levels:</strong> High (≥70%), Moderate (40-69%), Low (&lt;40%)
-              </p>
-            </div>
-            <div class="mt-3 pt-3 border-t border-gray-700">
-              <p class="text-xs text-gray-400 italic">
-                ⚠️ <strong>This is not an official score, just an experimental analysis tool.</strong> Results should be interpreted carefully and may contain false positives.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* R4R Score Debug Breakdown */}
       <div class="bg-gray-800/50 border border-gray-600 rounded-lg p-4 mb-8">
@@ -784,17 +821,31 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         <NetworkGraph 
           selectedUser={selectedUser}
           reviewPairs={reviewPairs.value}
+          centralUserR4rScore={r4rScoreDetails.value.finalScore}
         />
       )}
 
       {/* Review Pairs Table */}
       <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
         <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
-          <h3 class="text-lg font-semibold text-white">Review Relationships</h3>
-          <p class="text-sm text-gray-300 mt-1">
-            Reviews paired by user. Green checkmarks indicate R4R (Review for Review). 
-            Negative-negative pairs are excluded from R4R calculation as they don't represent positive mutual benefit.
-          </p>
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="text-lg font-semibold text-white">Review Relationships</h3>
+              <p class="text-sm text-gray-300 mt-1">
+                Reviews paired by user. Green checkmarks indicate R4R (Review for Review). 
+                Only positive-positive pairs count as R4R, as they represent true mutual benefit.
+              </p>
+            </div>
+            <button 
+              onClick={() => {
+                console.log('🔄 Manual R4R score reload triggered');
+                loadR4rScores();
+              }}
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            >
+              Reload R4R Scores ({userR4rScores.value.size})
+            </button>
+          </div>
         </div>
 
         {reviewPairs.value.length === 0 ? (
@@ -817,6 +868,9 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
                   </th>
                   <th class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Time Gap
+                  </th>
+                  <th class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    R4R Score
                   </th>
                   <th class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Reciprocal
@@ -885,6 +939,21 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
                               : 'text-green-600' // More than a week - normal
                         }`}>
                           {formatTimeDifference(pair.timeDifference)}
+                        </div>
+                      ) : (
+                        <div class="text-gray-500 text-sm">—</div>
+                      )}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                      {pair.r4rScore !== undefined ? (
+                        <div class={`text-sm font-medium ${
+                          pair.r4rScore >= 70 
+                            ? 'text-red-400' // High R4R score - red
+                            : pair.r4rScore >= 40 
+                              ? 'text-yellow-400' // Moderate R4R score - yellow
+                              : 'text-green-400' // Low R4R score - green
+                        }`}>
+                          {pair.r4rScore}%
                         </div>
                       ) : (
                         <div class="text-gray-500 text-sm">—</div>

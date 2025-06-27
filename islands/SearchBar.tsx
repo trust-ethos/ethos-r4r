@@ -325,9 +325,7 @@ export default function SearchBar({ onAnalyze }: SearchBarProps) {
         <p>
           Type at least {MIN_SEARCH_LENGTH} characters to search for Ethos profiles. Select a profile from the dropdown to analyze their reviews.
         </p>
-        <p class="text-xs text-gray-500 mt-1">
-          Search is debounced by {DEBOUNCE_DELAY}ms to respect the Ethos API
-        </p>
+
       </div>
     </div>
   );
