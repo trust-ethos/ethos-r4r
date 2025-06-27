@@ -39,35 +39,84 @@ export default function SearchBar({ onAnalyze }: SearchBarProps) {
   const showDropdown = useSignal(false);
   const isLoading = useSignal(false);
 
-  // Debounced search function
+  // Enhanced debouncing and caching
   let searchTimeout: number | null = null;
+  let currentAbortController: AbortController | null = null;
+  const searchCache = new Map<string, EthosUser[]>();
+  const DEBOUNCE_DELAY = 500; // Increased from 300ms to 500ms
+  const MIN_SEARCH_LENGTH = 3; // Increased from 2 to 3 characters
 
   const performSearch = async (query: string) => {
-    if (query.length < 2) {
+    const trimmedQuery = query.trim().toLowerCase();
+    
+    // Early return for short queries
+    if (trimmedQuery.length < MIN_SEARCH_LENGTH) {
       searchResults.value = [];
       showDropdown.value = false;
       return;
     }
 
+    // Check cache first
+    if (searchCache.has(trimmedQuery)) {
+      console.log(`🎯 Using cached results for: "${trimmedQuery}"`);
+      const cachedResults = searchCache.get(trimmedQuery)!;
+      searchResults.value = cachedResults;
+      showDropdown.value = cachedResults.length > 0;
+      return;
+    }
+
+    // Cancel previous request if still pending
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+
+    // Create new abort controller for this request
+    currentAbortController = new AbortController();
     isLoading.value = true;
 
     try {
-      const response = await fetch(`/api/ethos-search?query=${encodeURIComponent(query)}&limit=8`);
+      console.log(`🔍 Searching Ethos API for: "${trimmedQuery}"`);
+      const response = await fetch(
+        `/api/ethos-search?query=${encodeURIComponent(trimmedQuery)}&limit=8`,
+        { signal: currentAbortController.signal }
+      );
+      
       const data: EthosSearchResponse = await response.json();
 
-      if (data.ok && data.data) {
-        searchResults.value = data.data.values;
-        showDropdown.value = data.data.values.length > 0;
-      } else {
-        searchResults.value = [];
-        showDropdown.value = false;
+      // Only update if this request wasn't aborted
+      if (!currentAbortController.signal.aborted) {
+        if (data.ok && data.data) {
+          const results = data.data.values;
+          
+          // Cache the results (limit cache size to prevent memory issues)
+          if (searchCache.size > 50) {
+            const firstKey = searchCache.keys().next().value;
+            searchCache.delete(firstKey);
+          }
+          searchCache.set(trimmedQuery, results);
+          
+          searchResults.value = results;
+          showDropdown.value = results.length > 0;
+          console.log(`✅ Found ${results.length} results for: "${trimmedQuery}"`);
+        } else {
+          searchResults.value = [];
+          showDropdown.value = false;
+          console.log(`❌ No results for: "${trimmedQuery}"`);
+        }
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log(`⏹️ Search aborted for: "${trimmedQuery}"`);
+        return;
+      }
       console.error("Search error:", error);
       searchResults.value = [];
       showDropdown.value = false;
     } finally {
-      isLoading.value = false;
+      if (currentAbortController && !currentAbortController.signal.aborted) {
+        isLoading.value = false;
+        currentAbortController = null;
+      }
     }
   };
 
@@ -80,10 +129,10 @@ export default function SearchBar({ onAnalyze }: SearchBarProps) {
       clearTimeout(searchTimeout);
     }
 
-    // Debounce search by 300ms
+    // Enhanced debouncing with longer delay for API respect
     searchTimeout = setTimeout(() => {
       performSearch(value);
-    }, 300);
+    }, DEBOUNCE_DELAY) as unknown as number;
   };
 
   const selectUser = (user: EthosUser) => {
@@ -241,9 +290,9 @@ export default function SearchBar({ onAnalyze }: SearchBarProps) {
           )}
 
           {/* No results message */}
-          {showDropdown.value && searchResults.value.length === 0 && searchTerm.value.length >= 2 && !isLoading.value && (
+          {showDropdown.value && searchResults.value.length === 0 && searchTerm.value.trim().length >= MIN_SEARCH_LENGTH && !isLoading.value && (
             <div class="absolute top-full left-0 right-0 bg-gray-800 border-2 border-gray-600 rounded-lg shadow-lg mt-1 p-4 text-center text-gray-400">
-              No profiles found for "{searchTerm.value}"
+              No profiles found for "{searchTerm.value.trim()}"
             </div>
           )}
         </div>
@@ -274,7 +323,10 @@ export default function SearchBar({ onAnalyze }: SearchBarProps) {
       {/* Search suggestions/hints */}
       <div class="mt-4 text-sm text-gray-400 text-center">
         <p>
-          Start typing to search for Ethos profiles. Select a profile from the dropdown to analyze their reviews.
+          Type at least {MIN_SEARCH_LENGTH} characters to search for Ethos profiles. Select a profile from the dropdown to analyze their reviews.
+        </p>
+        <p class="text-xs text-gray-500 mt-1">
+          Search is debounced by {DEBOUNCE_DELAY}ms to respect the Ethos API
         </p>
       </div>
     </div>
