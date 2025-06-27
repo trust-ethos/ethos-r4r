@@ -18,6 +18,7 @@ import * as $api_save_analysis from "./routes/api/save-analysis.ts";
 import * as $api_schedule_r4r_jobs from "./routes/api/schedule-r4r-jobs.ts";
 import * as $api_simple_test from "./routes/api/simple-test.ts";
 import * as $api_test_batch_simple from "./routes/api/test-batch-simple.ts";
+import * as $api_update_high_risk_r4rs from "./routes/api/update-high-risk-r4rs.ts";
 import * as $greet_name_ from "./routes/greet/[name].tsx";
 import * as $index from "./routes/index.tsx";
 import * as $leaderboard from "./routes/leaderboard.tsx";
@@ -49,6 +50,7 @@ const manifest = {
     "./routes/api/schedule-r4r-jobs.ts": $api_schedule_r4r_jobs,
     "./routes/api/simple-test.ts": $api_simple_test,
     "./routes/api/test-batch-simple.ts": $api_test_batch_simple,
+    "./routes/api/update-high-risk-r4rs.ts": $api_update_high_risk_r4rs,
     "./routes/greet/[name].tsx": $greet_name_,
     "./routes/index.tsx": $index,
     "./routes/leaderboard.tsx": $leaderboard,
