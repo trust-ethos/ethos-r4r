@@ -125,8 +125,6 @@ export default function LeaderboardPage() {
     }
   };
 
-
-
   if (isLoading.value) {
     return (
       <div class="text-center py-12">
@@ -251,12 +249,6 @@ export default function LeaderboardPage() {
                   </th>
                   <th 
                     class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 transition-colors"
-                    onClick={() => handleSort('high_risk_r4rs')}
-                  >
-                    R4Rs {getSortIcon('high_risk_r4rs')}
-                  </th>
-                  <th 
-                    class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 transition-colors"
                     onClick={() => handleSort('quick_reciprocations')}
                   >
                     Quick Recips {getSortIcon('quick_reciprocations')}
@@ -277,8 +269,8 @@ export default function LeaderboardPage() {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
-                        <img
-                          src={entry.avatar}
+                        <img 
+                          src={entry.avatar} 
                           alt={entry.name}
                           class="w-10 h-10 rounded-full mr-3"
                           onError={(e) => {
@@ -327,20 +319,6 @@ export default function LeaderboardPage() {
                       <div class="text-lg font-semibold text-purple-400">
                         {entry.reciprocal_reviews}
                       </div>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                      <div class={`text-lg font-semibold ${
-                        (entry.high_risk_r4rs ?? 0) > 0 
-                          ? 'text-red-400' 
-                          : 'text-gray-400'
-                      }`}>
-                        {entry.high_risk_r4rs ?? 0}
-                      </div>
-                      {(entry.high_risk_r4rs ?? 0) > 0 && (
-                        <div class="text-xs text-red-300 mt-1">
-                          ⚠️ High Risk
-                        </div>
-                      )}
                     </td>
                     <td class="px-6 py-4 text-center">
                       <div class="text-lg font-semibold text-red-400">
