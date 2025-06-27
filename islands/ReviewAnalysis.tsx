@@ -388,6 +388,11 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         ? reciprocalPairs.reduce((sum, pair) => sum + (pair.timeDifference || 0), 0) / reciprocalPairs.length
         : 0;
 
+      // Calculate high risk R4Rs (reciprocal reviews with users who have R4R score ≥70%)
+      const highRiskR4rs = reciprocalPairs.filter(pair => 
+        pair.r4rScore !== undefined && pair.r4rScore >= 70
+      ).length;
+
       // Fetch Ethos score and XP
       let ethosScore = 0;
       let ethosXp = 0;
@@ -425,6 +430,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         avgReciprocalTime,
         ethosScore,
         ethosXp,
+        highRiskR4rs,
         processingTime: 0 // We can add timing later if needed
       };
 
@@ -681,7 +687,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
       </div>
 
       {/* Statistics */}
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <div class="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4 text-center">
           <div class="text-2xl font-bold text-blue-400">{stats.value.given}</div>
           <div class="text-sm text-blue-400">Reviews Given</div>
@@ -693,6 +699,27 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
         <div class="bg-purple-900/30 border border-purple-500/50 rounded-lg p-4 text-center">
           <div class="text-2xl font-bold text-purple-400">{stats.value.reciprocal}</div>
           <div class="text-sm text-purple-400">Reciprocal Reviews</div>
+        </div>
+        <div class="bg-red-900/30 border border-red-500/50 rounded-lg p-4 text-center">
+          <div class={`text-2xl font-bold ${
+            (() => {
+              const highRiskCount = reviewPairs.value.filter(pair => 
+                pair.isReciprocal && pair.r4rScore !== undefined && pair.r4rScore >= 70
+              ).length;
+              return highRiskCount > 0 ? 'text-red-400' : 'text-gray-400';
+            })()
+          }`}>
+            {(() => {
+              const highRiskCount = reviewPairs.value.filter(pair => 
+                pair.isReciprocal && pair.r4rScore !== undefined && pair.r4rScore >= 70
+              ).length;
+              return highRiskCount;
+            })()}
+          </div>
+          <div class="text-sm text-red-400">High Risk R4Rs</div>
+          <div class="text-xs text-gray-400 mt-1">
+            R4R Score ≥70%
+          </div>
         </div>
         <div class={`rounded-lg p-4 text-center ${
           stats.value.r4rScore >= 70 

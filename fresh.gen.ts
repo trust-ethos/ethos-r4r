@@ -4,14 +4,20 @@
 
 import * as $_404 from "./routes/_404.tsx";
 import * as $_app from "./routes/_app.tsx";
+import * as $admin from "./routes/admin.tsx";
+import * as $api_calculate_r4r_batch from "./routes/api/calculate-r4r-batch.ts";
 import * as $api_ethos_activities_given from "./routes/api/ethos-activities-given.ts";
 import * as $api_ethos_activities_received from "./routes/api/ethos-activities-received.ts";
 import * as $api_ethos_score from "./routes/api/ethos-score.ts";
 import * as $api_ethos_search from "./routes/api/ethos-search.ts";
 import * as $api_ethos_xp from "./routes/api/ethos-xp.ts";
+import * as $api_job_status from "./routes/api/job-status.ts";
 import * as $api_joke from "./routes/api/joke.ts";
 import * as $api_leaderboard from "./routes/api/leaderboard.ts";
 import * as $api_save_analysis from "./routes/api/save-analysis.ts";
+import * as $api_schedule_r4r_jobs from "./routes/api/schedule-r4r-jobs.ts";
+import * as $api_simple_test from "./routes/api/simple-test.ts";
+import * as $api_test_batch_simple from "./routes/api/test-batch-simple.ts";
 import * as $greet_name_ from "./routes/greet/[name].tsx";
 import * as $index from "./routes/index.tsx";
 import * as $leaderboard from "./routes/leaderboard.tsx";
@@ -29,14 +35,20 @@ const manifest = {
   routes: {
     "./routes/_404.tsx": $_404,
     "./routes/_app.tsx": $_app,
+    "./routes/admin.tsx": $admin,
+    "./routes/api/calculate-r4r-batch.ts": $api_calculate_r4r_batch,
     "./routes/api/ethos-activities-given.ts": $api_ethos_activities_given,
     "./routes/api/ethos-activities-received.ts": $api_ethos_activities_received,
     "./routes/api/ethos-score.ts": $api_ethos_score,
     "./routes/api/ethos-search.ts": $api_ethos_search,
     "./routes/api/ethos-xp.ts": $api_ethos_xp,
+    "./routes/api/job-status.ts": $api_job_status,
     "./routes/api/joke.ts": $api_joke,
     "./routes/api/leaderboard.ts": $api_leaderboard,
     "./routes/api/save-analysis.ts": $api_save_analysis,
+    "./routes/api/schedule-r4r-jobs.ts": $api_schedule_r4r_jobs,
+    "./routes/api/simple-test.ts": $api_simple_test,
+    "./routes/api/test-batch-simple.ts": $api_test_batch_simple,
     "./routes/greet/[name].tsx": $greet_name_,
     "./routes/index.tsx": $index,
     "./routes/leaderboard.tsx": $leaderboard,

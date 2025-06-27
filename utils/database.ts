@@ -91,6 +91,17 @@ async function initializeTables(): Promise<void> {
     // Column already exists - that's fine
   }
 
+  // Migration: Add high_risk_r4rs column
+  try {
+    await client.queryObject`
+      ALTER TABLE leaderboard_entries 
+      ADD COLUMN IF NOT EXISTS high_risk_r4rs INTEGER DEFAULT 0
+    `;
+    console.log("✅ Added high_risk_r4rs column");
+  } catch (error) {
+    // Column already exists - that's fine
+  }
+
   // Create index for better performance
   await client.queryObject`
     CREATE INDEX IF NOT EXISTS idx_leaderboard_farming_score ON leaderboard_entries(farming_score DESC)
@@ -102,6 +113,10 @@ async function initializeTables(): Promise<void> {
   
   await client.queryObject`
     CREATE INDEX IF NOT EXISTS idx_leaderboard_last_analyzed ON leaderboard_entries(last_analyzed DESC)
+  `;
+  
+  await client.queryObject`
+    CREATE INDEX IF NOT EXISTS idx_leaderboard_high_risk_r4rs ON leaderboard_entries(high_risk_r4rs DESC)
   `;
 }
 
@@ -123,6 +138,7 @@ export interface LeaderboardEntry {
   processing_time: number;
   ethos_score?: number;
   ethos_xp?: number;
+  high_risk_r4rs?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -135,14 +151,14 @@ export async function saveLeaderboardEntry(entry: LeaderboardEntry): Promise<voi
       userkey, username, name, avatar, score, reviews_given, reviews_received,
       reciprocal_reviews, farming_score, risk_level, quick_reciprocations,
       avg_reciprocal_time, last_analyzed, analysis_version, processing_time,
-      ethos_score, ethos_xp, updated_at
+      ethos_score, ethos_xp, high_risk_r4rs, updated_at
     ) VALUES (
       ${entry.userkey}, ${entry.username}, ${entry.name}, ${entry.avatar},
       ${entry.score}, ${entry.reviews_given}, ${entry.reviews_received},
       ${entry.reciprocal_reviews}, ${entry.farming_score}, ${entry.risk_level},
       ${entry.quick_reciprocations}, ${entry.avg_reciprocal_time},
       ${entry.last_analyzed}, ${entry.analysis_version}, ${entry.processing_time},
-      ${entry.ethos_score || 0}, ${entry.ethos_xp || 0}, NOW()
+      ${entry.ethos_score || 0}, ${entry.ethos_xp || 0}, ${entry.high_risk_r4rs || 0}, NOW()
     )
     ON CONFLICT (userkey) DO UPDATE SET
       username = EXCLUDED.username,
@@ -161,6 +177,7 @@ export async function saveLeaderboardEntry(entry: LeaderboardEntry): Promise<voi
       processing_time = EXCLUDED.processing_time,
       ethos_score = EXCLUDED.ethos_score,
       ethos_xp = EXCLUDED.ethos_xp,
+      high_risk_r4rs = EXCLUDED.high_risk_r4rs,
       updated_at = NOW()
   `;
 }
@@ -186,7 +203,8 @@ export async function getLeaderboard(
     const validColumns = [
       'farming_score', 'username', 'name', 'score', 'reviews_given', 
       'reviews_received', 'reciprocal_reviews', 'quick_reciprocations', 
-      'avg_reciprocal_time', 'last_analyzed', 'risk_level', 'ethos_xp'
+      'avg_reciprocal_time', 'last_analyzed', 'risk_level', 'ethos_xp',
+      'high_risk_r4rs'
     ];
     
     if (!validColumns.includes(sortBy)) {

@@ -16,5 +16,9 @@ try {
 import { start } from "$fresh/server.ts";
 import manifest from "./fresh.gen.ts";
 import config from "./fresh.config.ts";
+import { startScheduler } from "./utils/scheduler.ts";
+
+// Start the job scheduler
+startScheduler();
 
 await start(manifest, config);
