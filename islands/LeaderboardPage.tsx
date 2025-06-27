@@ -253,7 +253,7 @@ export default function LeaderboardPage() {
                     class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 transition-colors"
                     onClick={() => handleSort('high_risk_r4rs')}
                   >
-                    High Risk R4Rs {getSortIcon('high_risk_r4rs')}
+                    R4Rs {getSortIcon('high_risk_r4rs')}
                   </th>
                   <th 
                     class="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-600 transition-colors"

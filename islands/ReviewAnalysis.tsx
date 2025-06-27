@@ -716,7 +716,7 @@ export default function ReviewAnalysis({ selectedUser, onClose }: ReviewAnalysis
               return highRiskCount;
             })()}
           </div>
-          <div class="text-sm text-red-400">High Risk R4Rs</div>
+          <div class="text-sm text-red-400">R4Rs</div>
           <div class="text-xs text-gray-400 mt-1">
             R4R Score ≥70%
           </div>
